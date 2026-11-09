@@ -1,0 +1,13 @@
+{
+  "name": "fitnessapp",
+  "private": true,
+  "scripts": {
+    "db:start": "supabase start --network-id fitnessapp-local",
+    "db:stop": "supabase stop",
+    "db:status": "supabase status",
+    "db:reset": "supabase db reset --network-id fitnessapp-local"
+  },
+  "devDependencies": {
+    "supabase": "3.0.0"
+  }
+}
