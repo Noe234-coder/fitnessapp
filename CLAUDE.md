@@ -1,6 +1,6 @@
 # CLAUDE.md — FitnessApp (draft)
 
-> Draft maintained in the claude.ai Project. Copy to the repo root (it's needed there from step 2b on).
+> Draft maintained in the claude.ai Project. The repo root has a copy (since step 2b-1); keep both in sync.
 > Sections marked TBD get filled in during repo setup (step 3).
 
 ## What this app is
@@ -28,16 +28,16 @@ Database (local stack):
 - `npm run db:stop` — stop it (data is kept).
 - `npm run db:status` — local URLs and keys.
 - `npm run db:reset` — rebuild the local DB from `supabase/migrations/` + `supabase/seed.sql`.
+- `npm run db:test` — run the pgTAP tests in `supabase/tests/database/` against the local stack. Run `db:reset` first: the fixtures are persistent rows from `seed.sql`. Don't call `npx supabase test db` directly: without `--network-id fitnessapp-local` it can't find the local stack.
 - `npx supabase migration new <name>` — create an empty migration file.
-- `npx supabase test db` — run the pgTAP tests in `supabase/tests/database/` against the local stack.
 
 TBD — dev server, build, lint, app tests, type generation.
 
 ## Project structure
 - `docs/schema-v1.md` — the approved schema: tables, conventions, design choices (D1–D12), RLS strategy, tests. **Read it before touching the database.**
 - `supabase/migrations/` — versioned migrations, one per group (see schema-v1.md §7).
-- `supabase/tests/database/` — pgTAP tests (`*.test.sql`).
-- `supabase/seed.sql` — local-only: the `tests` helper schema and a few fixtures. Never pushed to the hosted project.
+- `supabase/tests/database/` — pgTAP tests (`*.test.sql`): `00_meta`, `01_identity`, `02_libraries`, …
+- `supabase/seed.sql` — local-only: the `tests` helper schema (`tests.create_user`, `tests.user_id('t1')`) and the fixtures T1, A1, A2, T2, B1, X, U (`<name>@fitnessapp.test`). Never pushed to the hosted project.
 
 TBD — app folders (step 3).
 
@@ -52,12 +52,14 @@ TBD — app folders (step 3).
 ### Database
 - `docs/schema-v1.md` is the source of truth for the data model. If a task seems to need something it doesn't cover, or contradicts it, stop and ask instead of improvising.
 - Every schema change is a new SQL migration file in `supabase/migrations/`. Never edit the database through the dashboard, and never edit a migration that has already been applied (pushed, or committed and shared) — write a new one.
-- Conventions (full list in schema-v1.md §2): plural snake_case tables, singular columns, `<singular>_id` FKs, `_at` timestamptz / `_on` date, units in column names, `text` + named check constraints instead of enums, fixed-vocabulary values stored as English codes (labels live in i18n), `created_at`/`updated_at` + the shared `updated_at` trigger on every table.
+- Conventions (full list in schema-v1.md §2): plural snake_case tables, singular columns, `<singular>_id` FKs, `_at` timestamptz / `_on` date, units in column names, `text` + named check constraints instead of enums, fixed-vocabulary values stored as English codes (labels live in i18n), `created_at`/`updated_at` + the shared `private.set_updated_at()` trigger (before insert **and** update) on every table.
 - Every table has RLS enabled in the same migration that creates it, with explicit policies, and explicit grants: revoke everything from `anon`; grant `authenticated` only the operations its policies allow. Don't rely on default privileges.
+- **Functions:** the PUBLIC execute right on new functions is revoked for `postgres` in every schema. Every new function that `authenticated` calls (RLS helpers, RPCs) needs an explicit `grant execute … to authenticated`; never grant to `anon`. Trigger functions need no grant.
 - Ownership columns are copied down every tree and children use composite FKs that include them (schema-v1.md D3/D4). Don't replace a composite FK with a plain one, even if it looks redundant — it's what stops a row from pointing at another user's data, because FK checks ignore RLS.
+- **Deletes:** an athlete's data (profile, links, plans, logs) cascades from his auth user; anything pointing at `trainers` or at library rows is `on delete restrict`. Library rows are archived (`archived_at`), not deleted, once used.
 - RLS helpers live in the `private` schema (security definer, `stable`, `set search_path = ''`, fully qualified names). Policies use `(select auth.uid())` and `in (select private.trainer_athlete_ids())` so they run once per query.
 - Add `comment on table` / `comment on column` for every new table and column.
-- When adding or changing policies, add or update the corresponding pgTAP tests. The meta tests must keep passing (RLS on, comments, timestamps, trigger on every `public` table).
+- When adding or changing policies, add or update the corresponding pgTAP tests. The meta tests must keep passing (RLS on, comments, timestamps, trigger on every `public` table; no anon privileges).
 - After a migration, regenerate TypeScript types and commit them (from step 3 on).
 - Derived values (kcal = 4P + 4C + 9F, meal option macros, weekly averages, body fat, day status) are computed, never stored as hand-typed numbers.
 - Library tables (exercises, foods) are trainer-scoped and carry `source` / `source_ref`. Don't import external datasets without checking their license first.
@@ -86,5 +88,5 @@ TBD — app folders (step 3).
 
 ### Done means
 - The task's acceptance checklist passes.
-- Lint/build/tests pass (app commands TBD; database: `npm run db:reset` and `npx supabase test db`).
+- Lint/build/tests pass (app commands TBD; database: `npm run db:reset` then `npm run db:test`).
 - New migrations apply cleanly on a fresh local database (`npm run db:reset`).
