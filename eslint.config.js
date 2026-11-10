@@ -21,6 +21,13 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  {
+    // shadcn components export their variants next to the component.
+    files: ['src/components/ui/**/*.{ts,tsx}'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
   // Turns off the rules that would conflict with Prettier. Keep it last.
   prettier,
 ])
