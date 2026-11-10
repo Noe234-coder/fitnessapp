@@ -28,7 +28,7 @@ The project is in early development.
    interfaces, so this network binds them to localhost only:
 
    ```sh
-   docker network create -o 'com.docker.network.bridge.host_binding_ipv4=127.0.0.1' fitnessapp-local
+   npm run db:network
    ```
 
 3. Start the local Supabase stack:

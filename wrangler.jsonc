@@ -1,0 +1,12 @@
+// An assets-only Worker: no `main`, Cloudflare serves ./dist directly.
+// Deploys run from GitHub Actions on `main` (see CLAUDE.md, "CI and deploy").
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "fitnessapp",
+  "compatibility_date": "2026-11-10",
+  "assets": {
+    "directory": "./dist",
+    // Unknown paths are client-side routes: serve index.html with a 200.
+    "not_found_handling": "single-page-application",
+  },
+}
