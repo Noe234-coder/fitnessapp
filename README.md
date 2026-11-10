@@ -1,48 +1,65 @@
 # FitnessApp
 
+A mobile-first web app (installable PWA) for a personal trainer and his athletes:
+workout programs, meal plans, daily tracking and weekly check-ins, usable at the
+gym with a weak connection.
+
+Built with Vite, React and TypeScript on top of Supabase (Postgres, Auth, RLS).
+The project is in early development.
+
 ## Local development
 
 ### Prerequisites
 
-- Node.js >= 20
+- Node.js 22 (the version in `.nvmrc`; with nvm, run `nvm use`)
 - Docker (with the compose plugin), usable without `sudo`
 
-Install dependencies (includes the pinned Supabase CLI, run via `npx supabase`):
+### Setup
 
-```sh
-npm install
-```
+1. Install dependencies. This includes the pinned Supabase CLI, which is always
+   run through `npx supabase` or the npm scripts:
 
-### One-time Docker network
+   ```sh
+   npm ci
+   ```
 
-The local stack uses default credentials, and Docker publishes container ports on
-all interfaces (bypassing ufw). Create a network that binds published ports to
-localhost only:
+2. Create the Docker network for the local stack (once per machine). The local
+   stack uses default credentials, and Docker publishes container ports on all
+   interfaces, so this network binds them to localhost only:
 
-```sh
-docker network create -o 'com.docker.network.bridge.host_binding_ipv4=127.0.0.1' fitnessapp-local
-```
+   ```sh
+   docker network create -o 'com.docker.network.bridge.host_binding_ipv4=127.0.0.1' fitnessapp-local
+   ```
 
-### Scripts
+3. Start the local Supabase stack:
 
-| Script              | What it does                                                  |
-| ------------------- | ------------------------------------------------------------- |
-| `npm run db:start`  | Start the local Supabase stack on the `fitnessapp-local` network |
-| `npm run db:status` | Show local URLs (Studio, API, DB) and keys                    |
-| `npm run db:reset`  | Recreate the local database and re-apply migrations           |
-| `npm run db:stop`   | Stop the local stack                                          |
+   ```sh
+   npm run db:start
+   ```
 
-`db:start` and `db:reset` both pass `--network-id fitnessapp-local`. Without it,
-`supabase db reset` recreates the database container on a generated network that
-publishes Postgres on all interfaces. Always use the npm scripts instead of the
-raw commands.
+4. Create your env file:
 
-### Supabase CLI v3: local vs. remote
+   ```sh
+   cp .env.example .env.local
+   ```
 
-This repo pins Supabase CLI v3, which differs from the v2 syntax in most docs:
+   Then set `VITE_SUPABASE_PUBLISHABLE_KEY` in `.env.local` to the publishable
+   key printed by `npm run db:status`. `.env.local` is gitignored; never commit
+   it.
 
-- Commands target the **local** stack by default. Add `--remote` to target the
-  hosted project (replaces v2's `--linked`, `--project-ref` and `--db-url` on db
-  commands).
-- Commands that change the hosted project ask for confirmation (default No).
-- When in doubt, check `npx supabase <command> --help`.
+5. Start the app:
+
+   ```sh
+   npm run dev
+   ```
+
+### Commands and conventions
+
+[CLAUDE.md](CLAUDE.md) lists every command (app, database, tests) and the rules
+for working in this repo. The data model is described in
+[docs/schema-v1.md](docs/schema-v1.md).
+
+Always use the `db:*` npm scripts instead of the raw Supabase commands: they pass
+`--network-id fitnessapp-local`, which keeps the local database off public
+interfaces. The repo pins Supabase CLI v3, whose flags differ from the v2 syntax
+in most docs; when in doubt, check `npx supabase <command> --help`.
