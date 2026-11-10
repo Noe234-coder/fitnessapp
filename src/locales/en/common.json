@@ -1,0 +1,19 @@
+{
+  "app": {
+    "name": "FitnessApp"
+  },
+  "home": {
+    "tagline": "Your training, your nutrition and your progress, in one place.",
+    "switchLanguage": "Cambiar a español"
+  },
+  "notFound": {
+    "title": "Page not found",
+    "description": "The page you are looking for does not exist or has moved.",
+    "backHome": "Back to home"
+  },
+  "envError": {
+    "title": "Missing configuration",
+    "description": "The app cannot start because these environment variables are missing or invalid:",
+    "hint": "Copy .env.example to .env.local, fill in the values (npm run db:status) and restart the dev server."
+  }
+}

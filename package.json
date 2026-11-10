@@ -19,7 +19,8 @@
     "db:stop": "supabase stop",
     "db:status": "supabase status",
     "db:reset": "supabase db reset --network-id fitnessapp-local",
-    "db:test": "supabase test db --network-id fitnessapp-local"
+    "db:test": "supabase test db --network-id fitnessapp-local",
+    "db:types": "supabase gen types --lang typescript --schema public > src/lib/database.types.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
