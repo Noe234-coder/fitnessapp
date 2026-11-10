@@ -11,6 +11,10 @@
     "description": "La página que buscas no existe o ha cambiado de sitio.",
     "backHome": "Volver al inicio"
   },
+  "update": {
+    "available": "Nueva versión disponible",
+    "reload": "Recargar"
+  },
   "envError": {
     "title": "Falta configuración",
     "description": "La aplicación no puede arrancar porque estas variables de entorno faltan o no son válidas:",

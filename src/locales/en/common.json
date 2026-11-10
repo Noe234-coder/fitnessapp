@@ -11,6 +11,10 @@
     "description": "The page you are looking for does not exist or has moved.",
     "backHome": "Back to home"
   },
+  "update": {
+    "available": "New version available",
+    "reload": "Reload"
+  },
   "envError": {
     "title": "Missing configuration",
     "description": "The app cannot start because these environment variables are missing or invalid:",
