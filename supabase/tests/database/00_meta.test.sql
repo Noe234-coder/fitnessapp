@@ -3,7 +3,7 @@
 
 begin;
 
-select plan(21);
+select plan(22);
 
 -- Every ordinary or partitioned table in public.
 create temp view public_tables as
