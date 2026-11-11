@@ -215,7 +215,9 @@ isOneToOne: true
             [_ in never]: never
           }
           Functions: {
-            [_ in never]: never
+            "accept_invitation":
+{ Args: Record<PropertyKey, never>; Returns: string
+                           }
           }
           Enums: {
             [_ in never]: never

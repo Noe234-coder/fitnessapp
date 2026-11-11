@@ -17,6 +17,9 @@ comment on schema tests is
 grant usage on schema tests to anon, authenticated;
 
 -- Creates an auth user the way a sign-up does, so the sign-up trigger runs.
+-- The four token columns are set to '' as the auth service does: it cannot
+-- read a user that has NULL in them, and the Edge Function checks
+-- (scripts/test-invite-function.mjs) sign these fixtures in through it.
 create function tests.create_user(
   email text,
   raw_user_meta_data jsonb default '{}'::jsonb
@@ -30,13 +33,15 @@ declare
 begin
   insert into auth.users (
     instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
-    raw_app_meta_data, raw_user_meta_data, created_at, updated_at
+    raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
+    confirmation_token, recovery_token, email_change_token_new, email_change
   )
   values (
     '00000000-0000-0000-0000-000000000000', new_user_id, 'authenticated', 'authenticated',
     create_user.email, '', now(),
     '{"provider": "email", "providers": ["email"]}'::jsonb, create_user.raw_user_meta_data,
-    now(), now()
+    now(), now(),
+    '', '', '', ''
   );
   return new_user_id;
 end;
@@ -45,7 +50,23 @@ $$;
 comment on function tests.create_user(text, jsonb) is
   'Inserts a confirmed auth.users row (the sign-up trigger creates its profile) and returns its id. The user has no password and cannot sign in.';
 
+-- Email of an auth user. Security definer because authenticate_as() may be
+-- called while authenticated, and authenticated cannot read auth.users.
+create function tests.user_email(user_id uuid)
+returns text
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select u.email::text from auth.users u where u.id = user_email.user_id;
+$$;
+
+comment on function tests.user_email(uuid) is
+  'Returns the email of the auth user with that id, or null.';
+
 -- Makes the rest of the transaction run as that user, the way PostgREST would.
+-- The claims carry sub, role and email, like a real access token.
 create function tests.authenticate_as(user_id uuid)
 returns void
 language plpgsql
@@ -54,7 +75,11 @@ as $$
 begin
   perform set_config(
     'request.jwt.claims',
-    json_build_object('sub', user_id, 'role', 'authenticated')::text,
+    json_build_object(
+      'sub', user_id,
+      'role', 'authenticated',
+      'email', tests.user_email(user_id)
+    )::text,
     true
   );
   perform set_config('role', 'authenticated', true);
@@ -62,7 +87,7 @@ end;
 $$;
 
 comment on function tests.authenticate_as(uuid) is
-  'Switches to the authenticated role with request.jwt.claims.sub = user_id, local to the current transaction.';
+  'Switches to the authenticated role with request.jwt.claims (sub, role, email) of that user, local to the current transaction.';
 
 -- Back to the session role (postgres), with no JWT claims.
 create function tests.clear_authentication()
@@ -95,6 +120,7 @@ comment on function tests.user_id(text) is
   'Returns the id of the fixture user <fixture_name>@fitnessapp.test, or null.';
 
 -- Migration 1 removes the default execute privilege, so grant it explicitly.
+grant execute on function tests.user_email(uuid) to anon, authenticated;
 grant execute on function tests.authenticate_as(uuid) to anon, authenticated;
 grant execute on function tests.clear_authentication() to anon, authenticated;
 grant execute on function tests.user_id(text) to anon, authenticated;
