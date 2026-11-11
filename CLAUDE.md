@@ -30,6 +30,7 @@ Database (local stack):
 - `npm run db:reset` — rebuild the local DB from `supabase/migrations/` + `supabase/seed.sql`.
 - `npm run db:test` — run the pgTAP tests in `supabase/tests/database/` against the local stack. Run `db:reset` first: the fixtures are persistent rows from `seed.sql`. Don't call `npx supabase test db` directly: without `--network-id fitnessapp-local` it can't find the local stack.
 - `npx supabase migration new <name>` — create an empty migration file.
+- `node scripts/test-invite-function.mjs` — check the `invite-athlete` Edge Function end to end against the local stack (after `db:reset`). Needs `supabase/functions/.env`: copy `supabase/functions/.env.example`, then restart the stack. Not run in CI (CI starts Postgres only).
 
 - `npm run db:types` — regenerate `src/lib/database.types.ts` from the local database (`public` schema only). Run it after `db:reset` whenever a migration changes, and commit the result. No `--network-id` here: v3 generates types in-process and rejects the flag.
 
@@ -47,8 +48,10 @@ App (Node 22, see `.nvmrc`):
 ## Project structure
 - `docs/schema-v1.md` — the approved schema: tables, conventions, design choices (D1–D12), RLS strategy, tests. **Read it before touching the database.**
 - `supabase/migrations/` — versioned migrations, one per group (see schema-v1.md §7).
-- `supabase/tests/database/` — pgTAP tests (`*.test.sql`): `00_meta`, `01_identity`, `02_libraries`, …
-- `supabase/seed.sql` — local-only: the `tests` helper schema (`tests.create_user`, `tests.user_id('t1')`) and the fixtures T1, A1, A2, T2, B1, X, U (`<name>@fitnessapp.test`). Never pushed to the hosted project.
+- `supabase/tests/database/` — pgTAP tests (`*.test.sql`): `00_meta`, `01_identity`, `02_libraries`, `03_invitations`, …
+- `supabase/functions/invite-athlete/` — the invite Edge Function (`index.ts`, `cors.ts`). Deno, not part of the app build or `tsc`. `supabase/functions/.env` (gitignored) holds `APP_BASE_URL`.
+- `scripts/test-invite-function.mjs` — local end-to-end checks for that function.
+- `supabase/seed.sql` — local-only: the `tests` helper schema (`tests.create_user`, `tests.user_id('t1')`, `tests.authenticate_as`) and the fixtures T1, A1, A2, T2, B1, X, U (`<name>@fitnessapp.test`). Never pushed to the hosted project.
 
 App (`src/`, imported through the `@/` alias):
 - `src/main.tsx` — entry: validates the env, then loads the app, or renders the env error screen.
@@ -74,6 +77,19 @@ PWA, hosting and CI:
 So **a merge to `main` deploys to production**. There are no per-branch preview deployments.
 
 Caching: Cloudflare serves every asset with `Cache-Control: public, max-age=0, must-revalidate` by default, so `index.html`, `sw.js` and `manifest.webmanifest` always revalidate. `public/_headers` makes the hashed files under `/assets/` `immutable` for a year.
+
+## Invites
+The app is invite-only: public sign-up is off (`[auth] enable_signup = false`) and the only way in is a trainer's invitation.
+1. **Trainer:** the app calls the Edge Function `invite-athlete` with `{ email, full_name? }`. It checks the caller's JWT and his `trainers` row, creates an invite token (a magic-link token if the email already has a confirmed account), refuses with `already_linked` if that user has an active trainer, inserts the `invitations` row (valid 24 h) and returns only `{ url }`: `<APP_BASE_URL>/accept-invite?token_hash=…&type=invite|magiclink`. No email is sent: the trainer passes the link on himself.
+2. **Athlete:** the `/accept-invite` page (step 4b) calls `verifyOtp({ token_hash, type })` only when he taps "Accept", then `updateUser({ password })` for `invite`, then `rpc('accept_invitation')`.
+3. **`public.accept_invitation()`** links the caller to the trainer of the latest pending, unexpired invitation for the email in his JWT and returns the trainer's id. Safe to retry. It raises a stable code as the message: `not_authenticated`, `invitation_not_found`, `invitation_expired`, `already_has_trainer`.
+
+- Never return, log or store Supabase's `action_link`, the token or the invited email: the `action_link` is spent by a plain GET, so a link preview (WhatsApp) would use it up before the athlete taps it.
+- `accept_invitation()` is the one deliberate exception to "identity tables are written only by an Edge Function or SQL". `invitations` rows are still inserted only by the Edge Function, and `authenticated` has no write privilege on `invitations` or `trainer_athletes`.
+- `invite-athlete` has `verify_jwt = false` in `config.toml`, so it must keep verifying the JWT itself (`auth.getUser(token)`) on every non-`OPTIONS` request. It answers `OPTIONS` and sends its own CORS headers, allowing only the origin of `APP_BASE_URL`, never `*`.
+- Its error codes: `unauthorized` (401), `forbidden` (403, not a trainer), `invalid_request` (400), `already_linked` (409), `invite_failed` (500).
+- A second invite to someone who has not accepted yet replaces his token: the earlier link stops working.
+- Tests: `supabase/tests/database/03_invitations.test.sql` (pgTAP) and `scripts/test-invite-function.mjs` (the function, local only).
 
 ## Rules for working in this repo
 
