@@ -13,7 +13,8 @@
   },
   "update": {
     "available": "New version available",
-    "reload": "Reload"
+    "reload": "Reload",
+    "dismiss": "Dismiss"
   },
   "envError": {
     "title": "Missing configuration",

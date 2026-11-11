@@ -1,3 +1,4 @@
+import { XIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useRegisterSW } from 'virtual:pwa-register/react'
 
@@ -18,14 +19,15 @@ function checkForUpdate(registration: ServiceWorkerRegistration) {
 
 /**
  * Registers the service worker and, when a new version of the app is waiting,
- * shows a banner at the bottom of the screen. The page reloads only when the
- * button is tapped: an athlete in the middle of logging a set is never
- * interrupted.
+ * shows a banner at the bottom of the screen. The page reloads only when
+ * "Reload" is tapped: an athlete in the middle of logging a set is never
+ * interrupted. Dismissing hides the banner and leaves the new version waiting;
+ * it is picked up the next time the app is opened.
  */
 export function UpdateBanner() {
   const { t } = useTranslation()
   const {
-    needRefresh: [needRefresh],
+    needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
   } = useRegisterSW({
     onRegisteredSW(_swScriptUrl, registration) {
@@ -41,10 +43,18 @@ export function UpdateBanner() {
       role="status"
       className="fixed inset-x-0 bottom-0 z-50 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]"
     >
-      <div className="mx-auto flex w-full max-w-md items-center justify-between gap-3 rounded-xl border bg-popover py-2 pr-2 pl-4 text-popover-foreground shadow-lg">
-        <p className="text-sm font-medium">{t('update.available')}</p>
+      <div className="mx-auto flex w-full max-w-md items-center gap-1 rounded-xl border bg-popover py-2 pr-2 pl-4 text-popover-foreground shadow-lg">
+        <p className="mr-auto text-sm font-medium">{t('update.available')}</p>
         <Button size="lg" onClick={() => void updateServiceWorker()}>
           {t('update.reload')}
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon-lg"
+          aria-label={t('update.dismiss')}
+          onClick={() => setNeedRefresh(false)}
+        >
+          <XIcon />
         </Button>
       </div>
     </div>

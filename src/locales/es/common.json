@@ -13,7 +13,8 @@
   },
   "update": {
     "available": "Nueva versión disponible",
-    "reload": "Recargar"
+    "reload": "Recargar",
+    "dismiss": "Cerrar"
   },
   "envError": {
     "title": "Falta configuración",
