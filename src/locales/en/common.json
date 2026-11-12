@@ -2,9 +2,38 @@
   "app": {
     "name": "FitnessApp"
   },
+  "auth": {
+    "loading": "Loading…",
+    "login": {
+      "title": "Log in",
+      "email": "Email",
+      "password": "Password",
+      "submit": "Log in",
+      "submitting": "Logging in…",
+      "emailInvalid": "Enter a valid email address.",
+      "passwordRequired": "Enter your password.",
+      "forgotPassword": "Forgot your password? Ask your trainer for a new link."
+    },
+    "password": {
+      "show": "Show password",
+      "hide": "Hide password"
+    },
+    "logout": "Log out",
+    "noConnection": {
+      "title": "No connection",
+      "description": "We could not load your account. Check your connection and try again.",
+      "retry": "Try again"
+    }
+  },
   "home": {
-    "tagline": "Your training, your nutrition and your progress, in one place.",
-    "switchLanguage": "Cambiar a español"
+    "greeting": "Hi, {{name}}",
+    "roleTrainer": "You are logged in as a trainer.",
+    "roleAthlete": "You are logged in as an athlete."
+  },
+  "errors": {
+    "wrongCredentials": "The email or the password is not correct.",
+    "network": "No connection. Check your signal and try again.",
+    "unknown": "Something went wrong. Try again."
   },
   "notFound": {
     "title": "Page not found",

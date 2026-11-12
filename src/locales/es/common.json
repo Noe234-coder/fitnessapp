@@ -2,9 +2,38 @@
   "app": {
     "name": "FitnessApp"
   },
+  "auth": {
+    "loading": "Cargando…",
+    "login": {
+      "title": "Inicia sesión",
+      "email": "Correo electrónico",
+      "password": "Contraseña",
+      "submit": "Entrar",
+      "submitting": "Entrando…",
+      "emailInvalid": "Escribe un correo electrónico válido.",
+      "passwordRequired": "Escribe tu contraseña.",
+      "forgotPassword": "¿Has olvidado tu contraseña? Pide un enlace nuevo a tu entrenador."
+    },
+    "password": {
+      "show": "Mostrar contraseña",
+      "hide": "Ocultar contraseña"
+    },
+    "logout": "Cerrar sesión",
+    "noConnection": {
+      "title": "Sin conexión",
+      "description": "No hemos podido cargar tu cuenta. Comprueba la conexión y vuelve a intentarlo.",
+      "retry": "Reintentar"
+    }
+  },
   "home": {
-    "tagline": "Tu entrenamiento, tu nutrición y tu progreso, en un solo lugar.",
-    "switchLanguage": "Switch to English"
+    "greeting": "Hola, {{name}}",
+    "roleTrainer": "Has entrado como entrenador.",
+    "roleAthlete": "Has entrado como atleta."
+  },
+  "errors": {
+    "wrongCredentials": "El correo o la contraseña no son correctos.",
+    "network": "No hay conexión. Comprueba la señal e inténtalo de nuevo.",
+    "unknown": "Algo ha salido mal. Inténtalo de nuevo."
   },
   "notFound": {
     "title": "Página no encontrada",
