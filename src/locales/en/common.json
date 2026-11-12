@@ -11,8 +11,7 @@
       "submit": "Log in",
       "submitting": "Logging in…",
       "emailInvalid": "Enter a valid email address.",
-      "passwordRequired": "Enter your password.",
-      "forgotPassword": "Forgot your password? Ask your trainer for a new link."
+      "passwordRequired": "Enter your password."
     },
     "password": {
       "show": "Show password",

@@ -12,8 +12,8 @@ import { FormError, PasswordField, TextField } from './form-fields'
 import { LoadingScreen } from './screens'
 
 /**
- * Email and password. There is no sign-up and no password reset here: the
- * app is invite-only, and a new link from the trainer is the way back in.
+ * Email and password. There is no sign-up (the app is invite-only) and no
+ * password recovery yet.
  */
 export function LoginPage() {
   const { t } = useTranslation()
@@ -92,9 +92,6 @@ export function LoginPage() {
           {t(submitting ? 'auth.login.submitting' : 'auth.login.submit')}
         </Button>
       </form>
-      <p className="text-sm text-muted-foreground">
-        {t('auth.login.forgotPassword')}
-      </p>
     </main>
   )
 }

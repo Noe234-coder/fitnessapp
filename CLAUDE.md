@@ -12,7 +12,7 @@ FitnessApp is a mobile-first web app for a personal trainer and his athletes. It
 - **App:** Vite + React + TypeScript, client-only SPA (no SSR), installable PWA via vite-plugin-pwa (Workbox).
 - **Routing:** React Router in data mode (`createBrowserRouter`; no framework mode).
 - **UI:** Tailwind CSS + shadcn/ui (components live in the repo).
-- **Forms & validation:** React Hook Form + Zod.
+- **Forms & validation:** Zod, with plain React state for the small forms. React Hook Form is not installed yet: it is added with the first large form (step 6), as an explicit decision.
 - **Server data:** supabase-js + TanStack Query; query cache persisted to IndexedDB.
 - **Offline writes:** Dexie (IndexedDB) outbox, flushed on app open, window focus and the `online` event.
 - **i18n:** i18next + react-i18next. Spanish (`es`) default, English (`en`) required.
