@@ -50,9 +50,9 @@ port = 54329
 # Configure one of the supported pooler modes: `transaction`, `session`.
 pool_mode = "transaction"
 # How many server connections to allow per user/database pair.
-default_pool_size = 20
+default_pool_size = 15
 # Maximum number of client connections allowed.
-max_client_conn = 100
+max_client_conn = 200
 
 # [db.vault]
 # secret_key = "env(SECRET_VALUE)"
@@ -145,14 +145,17 @@ max_catalogs = 2
 # [storage.analytics.buckets.my-warehouse]
 
 # Store vector embeddings in S3 for large and durable datasets
+# Off, as on the hosted project (vector buckets need the Pro plan). The
+# limits are left unset, as they are there.
 [storage.vector]
-enabled = true
-max_buckets = 10
-max_indexes = 5
+enabled = false
+# max_buckets = 10
+# max_indexes = 5
 
 # Vector Buckets is available to Supabase Pro plan.
 # [storage.vector.buckets.documents-openai]
 
+# Values mirror hosted; do not change without a decision in decisions.md
 [auth]
 enabled = true
 # The base URL of your website. Used as an allow-list for redirects and for constructing URLs used
@@ -228,13 +231,13 @@ enabled = true
 # addresses. If disabled, only the new email is required to confirm.
 double_confirm_changes = true
 # If enabled, users need to confirm their email address before signing in.
-enable_confirmations = false
+enable_confirmations = true
 # If enabled, users will need to reauthenticate or have logged in recently to change their password.
 secure_password_change = false
 # Controls the minimum amount of time that must pass before sending another signup confirmation or password reset email.
-max_frequency = "1s"
+max_frequency = "1m0s"
 # Number of characters used in the email OTP.
-otp_length = 6
+otp_length = 8
 # Number of seconds before the email OTP expires (defaults to 1 hour).
 # 24 hours: invite and magic-link tokens use this expiry, and an invitation is valid for 24 hours.
 otp_expiry = 86400
@@ -265,7 +268,7 @@ otp_expiry = 86400
 # To block new signups only, set enable_signup = false under [auth] instead.
 enabled = false
 # If enabled, users need to confirm their phone number before signing in.
-enable_confirmations = false
+enable_confirmations = true
 # Template for sending OTP to users
 template = "Your code is {{ .Code }}"
 # Controls the minimum amount of time that must pass before sending another sms otp.
@@ -308,8 +311,8 @@ max_enrolled_factors = 10
 
 # Control MFA via App Authenticator (TOTP)
 [auth.mfa.totp]
-enroll_enabled = false
-verify_enabled = false
+enroll_enabled = true
+verify_enabled = true
 
 # Configure MFA via Phone Messaging
 [auth.mfa.phone]
