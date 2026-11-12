@@ -4,6 +4,13 @@
 #   Cache-Control: public, max-age=0, must-revalidate
 # which is what index.html, sw.js and manifest.webmanifest need: a deploy is
 # picked up on the next request. Only the hashed build output is overridden.
+#
+# A request that matches several rules gets the headers of all of them.
+
+# Never send the address of a page to another site: an invite link carries
+# its token in the query string (/accept-invite?token_hash=...).
+/*
+  Referrer-Policy: no-referrer
 
 # Vite puts a content hash in every file name under /assets/, so a given URL
 # never changes: cache it for a year without revalidating.

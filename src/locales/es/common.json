@@ -30,10 +30,44 @@
     "roleTrainer": "Has entrado como entrenador.",
     "roleAthlete": "Has entrado como atleta."
   },
+  "invites": {
+    "accept": {
+      "title": "Te han invitado a FitnessApp",
+      "description": "Tu entrenador te ha enviado esta invitación. Acéptala para empezar.",
+      "submit": "Aceptar invitación",
+      "submitting": "Aceptando…",
+      "retry": "Reintentar",
+      "otherSession": "En este dispositivo hay una sesión iniciada como {{who}}. Si aceptas, la sesión de la invitación la sustituirá.",
+      "invalidTitle": "Enlace no válido",
+      "invalidDescription": "Este enlace de invitación no es válido o está incompleto. Pide uno nuevo a tu entrenador.",
+      "expiredTitle": "Enlace caducado",
+      "goToLogin": "Ir a iniciar sesión",
+      "passwordTitle": "Crea tu contraseña",
+      "passwordDescription": "La usarás con tu correo electrónico para entrar en la app.",
+      "passwordLabel": "Contraseña",
+      "passwordHint": "Mínimo {{min}} caracteres.",
+      "passwordTooShort": "La contraseña debe tener al menos {{min}} caracteres.",
+      "passwordSubmit": "Guardar contraseña",
+      "passwordSubmitting": "Guardando…",
+      "linkingTitle": "Un último paso",
+      "linkingDescription": "Estamos vinculando tu cuenta con tu entrenador.",
+      "linking": "Vinculando…",
+      "unlinkedTitle": "Aún no tienes entrenador",
+      "unlinkedDescription": "La cuenta {{who}} no está vinculada a ningún entrenador. Si tu entrenador te ha enviado una invitación, acéptala ahora."
+    }
+  },
   "errors": {
     "wrongCredentials": "El correo o la contraseña no son correctos.",
     "network": "No hay conexión. Comprueba la señal e inténtalo de nuevo.",
-    "unknown": "Algo ha salido mal. Inténtalo de nuevo."
+    "unknown": "Algo ha salido mal. Inténtalo de nuevo.",
+    "linkExpired": "Este enlace ha caducado o ya se ha usado. Pide uno nuevo a tu entrenador.",
+    "weakPassword": "Esa contraseña no es válida. Prueba con una más larga.",
+    "accept": {
+      "notAuthenticated": "Tu sesión ya no es válida. Inicia sesión o pide un enlace nuevo a tu entrenador.",
+      "invitationNotFound": "No hay ninguna invitación pendiente para tu correo. Pide una nueva a tu entrenador.",
+      "invitationExpired": "La invitación ha caducado. Pide una nueva a tu entrenador.",
+      "alreadyHasTrainer": "Ya tienes un entrenador activo, así que no puedes aceptar otra invitación."
+    }
   },
   "notFound": {
     "title": "Página no encontrada",

@@ -2,6 +2,7 @@ import { createBrowserRouter } from 'react-router'
 
 import { LoginPage } from '@/features/auth/login-page'
 import { RequireAuth } from '@/features/auth/route-guards'
+import { AcceptInvitePage } from '@/features/invites/accept-invite-page'
 
 import { RootLayout } from './root-layout'
 import { HomePage } from './routes/home'
@@ -18,6 +19,7 @@ export const router = createBrowserRouter([
     Component: RootLayout,
     children: [
       { path: 'login', Component: LoginPage },
+      { path: 'accept-invite', Component: AcceptInvitePage },
       {
         Component: RequireAuth,
         children: [{ index: true, Component: HomePage }],
