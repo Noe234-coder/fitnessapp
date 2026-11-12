@@ -28,7 +28,8 @@
   "home": {
     "greeting": "Hi, {{name}}",
     "roleTrainer": "You are logged in as a trainer.",
-    "roleAthlete": "You are logged in as an athlete."
+    "roleAthlete": "You are logged in as an athlete.",
+    "inviteAthlete": "Invite an athlete"
   },
   "invites": {
     "accept": {
@@ -54,6 +55,32 @@
       "linking": "Linking…",
       "unlinkedTitle": "You have no trainer yet",
       "unlinkedDescription": "The account {{who}} is not linked to a trainer. If your trainer sent you an invitation, accept it now."
+    },
+    "send": {
+      "back": "Back",
+      "title": "Invite an athlete",
+      "description": "Create an invitation link and send it yourself, for example on WhatsApp. The app sends no email.",
+      "email": "Athlete's email",
+      "fullName": "Full name (optional)",
+      "emailInvalid": "Enter a valid email address.",
+      "fullNameTooLong": "The name is too long.",
+      "submit": "Create invitation link",
+      "submitting": "Creating…",
+      "linkLabel": "Invitation link for {{email}}",
+      "linkHelp": "It is valid for 24 hours. Copy it now: it will not be shown again.",
+      "copy": "Copy link",
+      "copied": "Link copied",
+      "copyFallback": "It could not be copied automatically. The link is selected: copy it by hand.",
+      "offlineTitle": "No connection",
+      "offline": "You need a connection to invite athletes. Try again when you have signal."
+    },
+    "pending": {
+      "title": "Pending invitations",
+      "empty": "There are no pending invitations.",
+      "loadError": "The invitations could not be loaded.",
+      "expires": "Expires {{when}}",
+      "expired": "Expired",
+      "hint": "To get a new link, invite the same email again; the old link stops working."
     }
   },
   "errors": {
@@ -67,6 +94,15 @@
       "invitationNotFound": "There is no pending invitation for your email. Ask your trainer for a new one.",
       "invitationExpired": "The invitation has expired. Ask your trainer for a new one.",
       "alreadyHasTrainer": "You already have an active trainer, so you cannot accept another invitation."
+    },
+    "invite": {
+      "unauthorized": "Your session is no longer valid. Log out and log in again.",
+      "forbidden": "Only trainers can invite athletes.",
+      "invalidRequest": "Check the email and the name, and try again.",
+      "alreadyLinked": "That person already has an active trainer, so they cannot be invited.",
+      "inviteFailed": "The invitation could not be created. Try again.",
+      "serverMisconfigured": "The invitation server is not configured correctly. Tell whoever runs the app.",
+      "methodNotAllowed": "The app sent a request the server does not accept. Update the app and try again."
     }
   },
   "notFound": {

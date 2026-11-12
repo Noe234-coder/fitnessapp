@@ -27,6 +27,15 @@ export function isNetworkError(error: unknown): boolean {
   )
 }
 
+/**
+ * A response that comes from a gateway in front of the server, not from the
+ * server itself (502, 503, 504): to the user it is the same as no connection,
+ * and trying again later is the right thing to do.
+ */
+export function isGatewayStatus(status: number): boolean {
+  return status >= 502 && status <= 504
+}
+
 export type LoginErrorKey =
   'errors.wrongCredentials' | 'errors.network' | 'errors.unknown'
 

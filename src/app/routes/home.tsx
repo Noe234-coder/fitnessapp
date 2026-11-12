@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router'
 
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/features/auth/auth-context'
@@ -21,14 +22,21 @@ export function HomePage() {
           {t(role === 'trainer' ? 'home.roleTrainer' : 'home.roleAthlete')}
         </p>
       </div>
-      <Button
-        variant="outline"
-        size="lg"
-        className="h-11 w-full text-base"
-        onClick={logout}
-      >
-        {t('auth.logout')}
-      </Button>
+      <div className="space-y-3">
+        {role === 'trainer' ? (
+          <Button asChild size="lg" className="h-11 w-full text-base">
+            <Link to="/trainer/invites">{t('home.inviteAthlete')}</Link>
+          </Button>
+        ) : null}
+        <Button
+          variant="outline"
+          size="lg"
+          className="h-11 w-full text-base"
+          onClick={logout}
+        >
+          {t('auth.logout')}
+        </Button>
+      </div>
     </main>
   )
 }

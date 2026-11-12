@@ -1,4 +1,5 @@
 import { authStore } from '@/features/auth/auth'
+import { isGatewayStatus } from '@/features/auth/auth-errors'
 import { supabase } from '@/lib/supabase'
 
 import type { AcceptParams } from './accept-params'
@@ -58,7 +59,9 @@ export async function acceptInvitation(): Promise<AcceptErrorKey | null> {
   try {
     const { error, status } = await supabase.rpc('accept_invitation')
     if (!error) return null
-    return status === 0 ? 'errors.network' : acceptErrorKey(error)
+    return status === 0 || isGatewayStatus(status)
+      ? 'errors.network'
+      : acceptErrorKey(error)
   } catch (error) {
     return acceptErrorKey(error)
   }

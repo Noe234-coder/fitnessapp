@@ -28,7 +28,8 @@
   "home": {
     "greeting": "Hola, {{name}}",
     "roleTrainer": "Has entrado como entrenador.",
-    "roleAthlete": "Has entrado como atleta."
+    "roleAthlete": "Has entrado como atleta.",
+    "inviteAthlete": "Invitar a un atleta"
   },
   "invites": {
     "accept": {
@@ -54,6 +55,32 @@
       "linking": "Vinculando…",
       "unlinkedTitle": "Aún no tienes entrenador",
       "unlinkedDescription": "La cuenta {{who}} no está vinculada a ningún entrenador. Si tu entrenador te ha enviado una invitación, acéptala ahora."
+    },
+    "send": {
+      "back": "Volver",
+      "title": "Invitar a un atleta",
+      "description": "Crea un enlace de invitación y envíaselo tú mismo, por ejemplo por WhatsApp. La app no envía ningún correo.",
+      "email": "Correo electrónico del atleta",
+      "fullName": "Nombre completo (opcional)",
+      "emailInvalid": "Escribe un correo electrónico válido.",
+      "fullNameTooLong": "El nombre es demasiado largo.",
+      "submit": "Crear enlace de invitación",
+      "submitting": "Creando…",
+      "linkLabel": "Enlace de invitación para {{email}}",
+      "linkHelp": "Es válido durante 24 horas. Cópialo ahora: no se volverá a mostrar.",
+      "copy": "Copiar enlace",
+      "copied": "Enlace copiado",
+      "copyFallback": "No se ha podido copiar automáticamente. El enlace está seleccionado: cópialo a mano.",
+      "offlineTitle": "Sin conexión",
+      "offline": "Para invitar atletas necesitas conexión. Vuelve a intentarlo cuando tengas señal."
+    },
+    "pending": {
+      "title": "Invitaciones pendientes",
+      "empty": "No hay invitaciones pendientes.",
+      "loadError": "No se han podido cargar las invitaciones.",
+      "expires": "Caduca {{when}}",
+      "expired": "Caducada",
+      "hint": "Para obtener un enlace nuevo, vuelve a invitar al mismo correo; el enlace anterior dejará de funcionar."
     }
   },
   "errors": {
@@ -67,6 +94,15 @@
       "invitationNotFound": "No hay ninguna invitación pendiente para tu correo. Pide una nueva a tu entrenador.",
       "invitationExpired": "La invitación ha caducado. Pide una nueva a tu entrenador.",
       "alreadyHasTrainer": "Ya tienes un entrenador activo, así que no puedes aceptar otra invitación."
+    },
+    "invite": {
+      "unauthorized": "Tu sesión ya no es válida. Cierra sesión y vuelve a entrar.",
+      "forbidden": "Solo los entrenadores pueden invitar atletas.",
+      "invalidRequest": "Revisa el correo electrónico y el nombre, y vuelve a intentarlo.",
+      "alreadyLinked": "Esa persona ya tiene un entrenador activo, así que no se la puede invitar.",
+      "inviteFailed": "No se ha podido crear la invitación. Inténtalo de nuevo.",
+      "serverMisconfigured": "El servidor de invitaciones no está bien configurado. Avisa a quien administra la app.",
+      "methodNotAllowed": "La app ha enviado una petición que el servidor no admite. Actualiza la app e inténtalo de nuevo."
     }
   },
   "notFound": {

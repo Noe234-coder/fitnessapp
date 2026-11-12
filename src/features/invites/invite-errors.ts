@@ -82,3 +82,26 @@ export function acceptErrorKey(error: unknown): AcceptErrorKey {
   }
   return 'errors.unknown'
 }
+
+// --- Edge Function invite-athlete --------------------------------------------
+
+/** The `{ error }` codes of the invite-athlete function (CLAUDE.md "Invites"). */
+export const INVITE_ERROR_KEYS = {
+  unauthorized: 'errors.invite.unauthorized',
+  forbidden: 'errors.invite.forbidden',
+  invalid_request: 'errors.invite.invalidRequest',
+  already_linked: 'errors.invite.alreadyLinked',
+  invite_failed: 'errors.invite.inviteFailed',
+  server_misconfigured: 'errors.invite.serverMisconfigured',
+  method_not_allowed: 'errors.invite.methodNotAllowed',
+} as const
+
+export type InviteErrorKey =
+  (typeof INVITE_ERROR_KEYS)[keyof typeof INVITE_ERROR_KEYS] | CommonErrorKey
+
+/** The i18n key for the `error` code in the function's response body. */
+export function inviteErrorKey(code: unknown): InviteErrorKey {
+  return typeof code === 'string' && Object.hasOwn(INVITE_ERROR_KEYS, code)
+    ? INVITE_ERROR_KEYS[code as keyof typeof INVITE_ERROR_KEYS]
+    : 'errors.unknown'
+}

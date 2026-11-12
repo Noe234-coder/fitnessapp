@@ -1,8 +1,9 @@
 import { createBrowserRouter } from 'react-router'
 
 import { LoginPage } from '@/features/auth/login-page'
-import { RequireAuth } from '@/features/auth/route-guards'
+import { RequireAuth, RequireTrainer } from '@/features/auth/route-guards'
 import { AcceptInvitePage } from '@/features/invites/accept-invite-page'
+import { InviteAthletePage } from '@/features/invites/invite-athlete-page'
 
 import { RootLayout } from './root-layout'
 import { HomePage } from './routes/home'
@@ -22,7 +23,14 @@ export const router = createBrowserRouter([
       { path: 'accept-invite', Component: AcceptInvitePage },
       {
         Component: RequireAuth,
-        children: [{ index: true, Component: HomePage }],
+        children: [
+          { index: true, Component: HomePage },
+          {
+            path: 'trainer',
+            Component: RequireTrainer,
+            children: [{ path: 'invites', Component: InviteAthletePage }],
+          },
+        ],
       },
       { path: '*', Component: NotFoundPage },
     ],

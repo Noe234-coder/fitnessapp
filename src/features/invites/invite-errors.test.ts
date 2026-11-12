@@ -7,6 +7,8 @@ import es from '@/locales/es/common.json'
 import {
   ACCEPT_ERROR_KEYS,
   acceptErrorKey,
+  INVITE_ERROR_KEYS,
+  inviteErrorKey,
   isSamePasswordError,
   passwordErrorKey,
   verifyErrorKey,
@@ -127,5 +129,43 @@ describe('passwordErrorKey', () => {
       isSamePasswordError(new AuthApiError('same', 422, 'same_password')),
     ).toBe(true)
     expect(isSamePasswordError(NETWORK)).toBe(false)
+  })
+})
+
+describe('inviteErrorKey', () => {
+  it('maps every code of invite-athlete (CLAUDE.md "Invites")', () => {
+    expect(inviteErrorKey('unauthorized')).toBe('errors.invite.unauthorized')
+    expect(inviteErrorKey('forbidden')).toBe('errors.invite.forbidden')
+    expect(inviteErrorKey('invalid_request')).toBe(
+      'errors.invite.invalidRequest',
+    )
+    expect(inviteErrorKey('already_linked')).toBe('errors.invite.alreadyLinked')
+    expect(inviteErrorKey('invite_failed')).toBe('errors.invite.inviteFailed')
+    expect(inviteErrorKey('server_misconfigured')).toBe(
+      'errors.invite.serverMisconfigured',
+    )
+    expect(inviteErrorKey('method_not_allowed')).toBe(
+      'errors.invite.methodNotAllowed',
+    )
+  })
+
+  it('maps each code to a key present in both locales', () => {
+    expect(Object.keys(INVITE_ERROR_KEYS).sort()).toEqual([
+      'already_linked',
+      'forbidden',
+      'invalid_request',
+      'invite_failed',
+      'method_not_allowed',
+      'server_misconfigured',
+      'unauthorized',
+    ])
+    for (const key of Object.values(INVITE_ERROR_KEYS)) expectInBothLocales(key)
+  })
+
+  it('falls back for a code it does not know, or no code at all', () => {
+    expect(inviteErrorKey('something_new')).toBe('errors.unknown')
+    expect(inviteErrorKey('constructor')).toBe('errors.unknown')
+    expect(inviteErrorKey(undefined)).toBe('errors.unknown')
+    expect(inviteErrorKey(42)).toBe('errors.unknown')
   })
 })

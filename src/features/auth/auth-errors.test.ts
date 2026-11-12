@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import en from '@/locales/en/common.json'
 import es from '@/locales/es/common.json'
 
-import { isNetworkError, loginErrorKey } from './auth-errors'
+import { isGatewayStatus, isNetworkError, loginErrorKey } from './auth-errors'
 
 describe('isNetworkError', () => {
   it('recognises a request that got no answer', () => {
@@ -41,6 +41,15 @@ describe('isNetworkError', () => {
     ).toBe(false)
     expect(isNetworkError(null)).toBe(false)
     expect(isNetworkError('Failed to fetch')).toBe(false)
+  })
+})
+
+describe('isGatewayStatus', () => {
+  it('is true for 502, 503 and 504 only', () => {
+    expect([502, 503, 504].every(isGatewayStatus)).toBe(true)
+    expect([0, 200, 400, 401, 409, 500, 501, 505].some(isGatewayStatus)).toBe(
+      false,
+    )
   })
 })
 
