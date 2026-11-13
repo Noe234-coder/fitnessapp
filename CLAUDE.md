@@ -93,6 +93,30 @@ The app is invite-only: public sign-up is off (`[auth] enable_signup = false`) a
 - A second invite to someone who has not accepted yet replaces his token: the earlier link stops working.
 - Tests: `supabase/tests/database/03_invitations.test.sql` (pgTAP) and `scripts/test-invite-function.mjs` (the function, local only).
 
+## Hosted project
+State on 2026-11-13, at the end of step 4b-2. Project `fitnessapp`, ref `cfxafmgjuyigayywntjn`, eu-west-3. Production origin: `https://fitnessapp.myfitnessapp.workers.dev`.
+
+What is on it:
+- **Config** (`config push`): public sign-up off, `otp_expiry` 86400 (invite links last 24 h), minimum password length 8, `site_url` = the production origin, redirect URLs = the two local dev origins. `supabase/config.toml` mirrors the hosted values: `npx supabase config diff --remote` (read-only) must report no changes. It also lists 12 properties the push does not manage and 2 masked credentials; of those, `auth.rate_limit.email_sent` has never been compared with the hosted value.
+- **Database** (`db push`): the four migrations in `supabase/migrations/`. The seed and the `tests` schema are not there.
+- **Edge Function:** `invite-athlete`, `verify_jwt` false, with one secret, `APP_BASE_URL` = the production origin.
+- **Users:** one, the first trainer, with his `trainers` row and an active self-link in `trainer_athletes`. There is no UI to create a trainer: the auth user is created in the dashboard (Authentication → Users → Add user, auto-confirm), then one SQL transaction inserts the `trainers` row and the self-link. His email and id are not in the repo.
+
+Working with it:
+- Hosted writes are run by Noé, in his own terminal (the CLI's confirmation is interactive) or in the dashboard SQL editor, one at a time, after the exact command and its effect have been shown. Each one is verified read-only afterwards.
+- `secrets`, `functions` and `projects api-keys` act on the linked project without `--remote`. `secrets list` shows the SHA-256 digest of each value, not the value. `projects api-keys` prints key values: filter its output, never show them.
+- Reads: `npx supabase db query --remote --read-only "<select>"` needs no confirmation. It accepts only `SELECT`, `WITH`, `VALUES`, `TABLE`, `SHOW` and `EXPLAIN`; pass longer SQL with `--file` (SQL that starts with a `--` comment is taken for a flag). It runs as a role that cannot `set role`, so "what does this user see through RLS" cannot be checked from the CLI: that query is run in the dashboard SQL editor.
+- Never select a real user's email into the output of a check: compare it or count it instead.
+
+Verified on 2026-11-13:
+- **CORS:** the hosted gateway passes the function's `Access-Control-Allow-Origin` through unchanged on every response, the preflight included. Only the local gateway replaces it with `*`.
+- **The invite flow, end to end** (run by Noé on an Android phone with Chrome, against production, with a synthetic `.test` address, which the hosted project accepts): invite created, the WhatsApp preview does not spend the token, accept, password, log out and in, the spent link reports "expired", an athlete who opens `/trainer/invites` is sent back to `/`, and an offline reload stays signed in. The test user was deleted afterwards.
+- **RLS as each user:** the rows a linked athlete and his trainer see in `profiles`, `trainers`, `invitations` and `trainer_athletes` match `docs/schema-v1.md` §5.
+
+Open:
+- `invite-athlete` reads `SUPABASE_SERVICE_ROLE_KEY`, which Supabase now lists as a legacy key. It must move to `SUPABASE_SECRET_KEYS` (a JSON object, the key under `default`) before the legacy keys stop working: the end of 2026 according to Supabase's key-migration guide, read on 2026-11-12.
+- Advisors after the `db push`. Security: no ERROR, two expected WARN (`authenticated_security_definer_function_executable` on `accept_invitation()` and `auth_otp_long_expiry`, both deliberate). Performance: WARN `multiple_permissive_policies` on 8 tables for `authenticated` SELECT, INFO `unindexed_foreign_keys` for `food_swaps_from_food_id_trainer_id_fkey`. Nothing was changed: a fix is a new migration, and Noé decides.
+
 ## Rules for working in this repo
 
 ### Supabase CLI (v3)
