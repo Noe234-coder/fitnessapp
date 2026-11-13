@@ -16,7 +16,7 @@ FitnessApp is a mobile-first web app for a personal trainer and his athletes. It
 - **Server data:** supabase-js + TanStack Query; query cache persisted to IndexedDB.
 - **Offline writes:** Dexie (IndexedDB) outbox, flushed on app open, window focus and the `online` event.
 - **i18n:** i18next + react-i18next. Spanish (`es`) default, English (`en`) required.
-- **Backend:** Supabase — Postgres, Auth, RLS. Edge Functions only where the service-role key is needed (e.g. invites). Hosted project ref: `cfxafmgjuyigayywntjn` (eu-west-3).
+- **Backend:** Supabase — Postgres, Auth, RLS. Edge Functions only where the secret key (service-role access) is needed (e.g. invites). Hosted project ref: `cfxafmgjuyigayywntjn` (eu-west-3).
 - **DB tooling:** Supabase CLI **v3**, pinned as an exact dev dependency, with a local Docker stack; generated types via `supabase gen types`; RLS tests with pgTAP (`supabase test db`).
 - **Quality:** Vitest, ESLint + Prettier, GitHub Actions CI.
 - **Hosting:** Cloudflare Workers static assets (free plan). Deploys run from GitHub Actions on `main`.
@@ -30,7 +30,7 @@ Database (local stack):
 - `npm run db:reset` — rebuild the local DB from `supabase/migrations/` + `supabase/seed.sql`.
 - `npm run db:test` — run the pgTAP tests in `supabase/tests/database/` against the local stack. Run `db:reset` first: the fixtures are persistent rows from `seed.sql`. Don't call `npx supabase test db` directly: without `--network-id fitnessapp-local` it can't find the local stack.
 - `npx supabase migration new <name>` — create an empty migration file.
-- `node scripts/test-invite-function.mjs` — check the `invite-athlete` Edge Function end to end against the local stack (after `db:reset`). Needs `supabase/functions/.env`: copy `supabase/functions/.env.example`, then restart the stack. Not run in CI (CI starts Postgres only).
+- `node scripts/test-invite-function.mjs` — check the `invite-athlete` Edge Function end to end against the local stack (after `db:reset`). Needs `supabase/functions/.env`: copy `supabase/functions/.env.example`, then restart the stack. A change to the function's code is served only after the edge runtime restarts (`docker restart supabase_edge_runtime_fitnessapp`, or `db:stop` and `db:start`); after a reboot that container may be stopped while the rest of the stack is up. Not run in CI (CI starts Postgres only).
 
 - `npm run db:types` — regenerate `src/lib/database.types.ts` from the local database (`public` schema only). Run it after `db:reset` whenever a migration changes, and commit the result. No `--network-id` here: v3 generates types in-process and rejects the flag.
 
@@ -49,8 +49,8 @@ App (Node 22, see `.nvmrc`):
 - `docs/schema-v1.md` — the approved schema: tables, conventions, design choices (D1–D12), RLS strategy, tests. **Read it before touching the database.**
 - `supabase/migrations/` — versioned migrations, one per group (see schema-v1.md §7).
 - `supabase/tests/database/` — pgTAP tests (`*.test.sql`): `00_meta`, `01_identity`, `02_libraries`, `03_invitations`, …
-- `supabase/functions/invite-athlete/` — the invite Edge Function (`index.ts`, `cors.ts`). Deno, not part of the app build or `tsc`. `supabase/functions/.env` (gitignored) holds `APP_BASE_URL`.
-- `scripts/test-invite-function.mjs` — local end-to-end checks for that function.
+- `supabase/functions/invite-athlete/` — the invite Edge Function (`index.ts`, `cors.ts`, `secret-key.ts`). Deno, not part of the app build or `tsc`. `supabase/functions/.env` (gitignored) holds `APP_BASE_URL` and no key: the runtime, local and hosted, gives the function `SUPABASE_URL` and `SUPABASE_SECRET_KEYS` (a JSON object; the function uses the key named `default`, with no fallback to the legacy `service_role` key).
+- `scripts/test-invite-function.mjs` — local end-to-end checks for that function, with the local secret and publishable keys from `supabase status`.
 - `supabase/seed.sql` — local-only: the `tests` helper schema (`tests.create_user`, `tests.user_id('t1')`, `tests.authenticate_as`) and the fixtures T1, A1, A2, T2, B1, X, U (`<name>@fitnessapp.test`). Never pushed to the hosted project.
 
 App (`src/`, imported through the `@/` alias):
@@ -99,22 +99,24 @@ State on 2026-11-13, at the end of step 4b-2. Project `fitnessapp`, ref `cfxafmg
 What is on it:
 - **Config** (`config push`): public sign-up off, `otp_expiry` 86400 (invite links last 24 h), minimum password length 8, `site_url` = the production origin, redirect URLs = the two local dev origins. `supabase/config.toml` mirrors the hosted values: `npx supabase config diff --remote` (read-only) must report no changes. It also lists 12 properties the push does not manage and 2 masked credentials; of those, `auth.rate_limit.email_sent` has never been compared with the hosted value.
 - **Database** (`db push`): the four migrations in `supabase/migrations/`. The seed and the `tests` schema are not there.
-- **Edge Function:** `invite-athlete`, `verify_jwt` false, with one secret, `APP_BASE_URL` = the production origin.
+- **Edge Function:** `invite-athlete`, `verify_jwt` false, with one secret, `APP_BASE_URL` = the production origin. It is deployed by hand (`functions deploy`, from the branch that holds the code), not by CI.
+- **API keys:** the app uses the publishable key `default` and the function the secret key `default`. The legacy `anon` and `service_role` keys were disabled on 2026-11-13 (step 4c) in Settings → API Keys; Supabase's migration guide says they can be re-activated there. Nothing in the repo uses them. The JWT signing keys were not changed: moving to asymmetric keys is a separate migration, and the legacy JWT secret can only be revoked while the legacy keys are disabled.
 - **Users:** one, the first trainer, with his `trainers` row and an active self-link in `trainer_athletes`. There is no UI to create a trainer: the auth user is created in the dashboard (Authentication → Users → Add user, auto-confirm), then one SQL transaction inserts the `trainers` row and the self-link. His email and id are not in the repo.
 
 Working with it:
 - Hosted writes are run by Noé, in his own terminal (the CLI's confirmation is interactive) or in the dashboard SQL editor, one at a time, after the exact command and its effect have been shown. Each one is verified read-only afterwards.
 - `secrets`, `functions` and `projects api-keys` act on the linked project without `--remote`. `secrets list` shows the SHA-256 digest of each value, not the value. `projects api-keys` prints key values: filter its output, never show them.
 - Reads: `npx supabase db query --remote --read-only "<select>"` needs no confirmation. It accepts only `SELECT`, `WITH`, `VALUES`, `TABLE`, `SHOW` and `EXPLAIN`; pass longer SQL with `--file` (SQL that starts with a `--` comment is taken for a flag). It runs as a role that cannot `set role`, so "what does this user see through RLS" cannot be checked from the CLI: that query is run in the dashboard SQL editor.
+- Logs, read-only: `npx supabase logs --remote --service <functions|function-edge|edge|auth> --since <UTC timestamp> --output-format json`. `function-edge` has one line per function request (method and status), `functions` the function's own console output. They lag by up to a minute. Print the method, path and status only: the records can hold more.
 - Never select a real user's email into the output of a check: compare it or count it instead.
 
 Verified on 2026-11-13:
 - **CORS:** the hosted gateway passes the function's `Access-Control-Allow-Origin` through unchanged on every response, the preflight included. Only the local gateway replaces it with `*`.
 - **The invite flow, end to end** (run by Noé on an Android phone with Chrome, against production, with a synthetic `.test` address, which the hosted project accepts): invite created, the WhatsApp preview does not spend the token, accept, password, log out and in, the spent link reports "expired", an athlete who opens `/trainer/invites` is sent back to `/`, and an offline reload stays signed in. The test user was deleted afterwards.
 - **RLS as each user:** the rows a linked athlete and his trainer see in `profiles`, `trainers`, `invitations` and `trainer_athletes` match `docs/schema-v1.md` §5.
+- **The secret key (step 4c):** with the function reading `SUPABASE_SECRET_KEYS`, one invite created from the production app succeeded (the test user and its pending invitation were deleted afterwards: a pending invitation is not removed by the user's cascade). With the legacy keys disabled, the API answers 401 "Legacy API keys are disabled" to the legacy `anon` key, the publishable key works, and the function still answers 401 without a user JWT and 405 on other methods.
 
 Open:
-- `invite-athlete` reads `SUPABASE_SERVICE_ROLE_KEY`, which Supabase now lists as a legacy key. It must move to `SUPABASE_SECRET_KEYS` (a JSON object, the key under `default`) before the legacy keys stop working: the end of 2026 according to Supabase's key-migration guide, read on 2026-11-12.
 - Advisors after the `db push`. Security: no ERROR, two expected WARN (`authenticated_security_definer_function_executable` on `accept_invitation()` and `auth_otp_long_expiry`, both deliberate). Performance: WARN `multiple_permissive_policies` on 8 tables for `authenticated` SELECT, INFO `unindexed_foreign_keys` for `food_swaps_from_food_id_trainer_id_fkey`. Nothing was changed: a fix is a new migration, and Noé decides.
 
 ## Rules for working in this repo
@@ -150,7 +152,7 @@ Open:
 - Translations are bundled, never fetched, so the UI works offline. New user-facing strings (the banner's included) go through i18n.
 
 ### Security
-- Never use or expose the service-role key in client code. Client uses the anon/publishable key only. Anything needing the service role runs in an Edge Function.
+- Never use or expose a secret key (`sb_secret_…`, or the legacy `service_role` key) in client code. The client uses the publishable key only. Anything needing service-role access runs in an Edge Function.
 - Athletes may only read/write their own data; trainers only their own athletes' data. Enforce this in RLS, not only in the UI.
 
 ### Auth & session (app)
