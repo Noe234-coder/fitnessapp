@@ -9,8 +9,9 @@ CLAUDE.md ("Hosted project" note, step 7).
 
 ## Where we are
 
-Four of the five hosted writes are done and verified. `invite-athlete` is
-deployed, and the hosted project still has no users.
+All five hosted writes are done and verified. `invite-athlete` is deployed
+and the hosted project has one user: the first trainer, linked to himself.
+What is left is the phone end-to-end test, its clean-up and the close-out.
 
 | #   | Hosted write                       | State                    |
 | --- | ---------------------------------- | ------------------------ |
@@ -18,7 +19,7 @@ deployed, and the hosted project still has no users.
 | 2   | `db push --remote`                 | Done, verified           |
 | 3   | `secrets set APP_BASE_URL`         | Done, verified           |
 | 4   | `functions deploy invite-athlete`  | Done, verified           |
-| 5   | First trainer (dashboard + SQL)    | Not done, needs a yes    |
+| 5   | First trainer (dashboard + SQL)    | Done, verified           |
 
 ## Step 0 (done)
 
@@ -209,17 +210,42 @@ printed, and every POST carried the body `{}`):
   and 0 in each of the 9 public tables, `invitations` and `trainer_athletes`
   included.
 
+## Hosted write 5: the first trainer (done)
+
+Done by Noé on 2026-11-13, in two parts:
+
+1. The auth user, created in the dashboard (Authentication → Users → Add
+   user, auto-confirmed). Noé chose the email and the password; neither was
+   given to Claude, and neither the email nor the user id is in the repo.
+2. One transaction, pasted by Noé into the dashboard SQL editor after reading
+   it: `insert into public.trainers (profile_id)` and
+   `insert into public.trainer_athletes (trainer_id, athlete_id)`, all three
+   values the user's id. Everything else is a column default: `started_at`
+   `now()`, `ended_at` null.
+
+Verified by Claude (`db query --remote --read-only`; the email was never
+selected):
+
+- **After part 1**: `auth.users` 1 row, email confirmed, not banned, not
+  anonymous. The `on_auth_user_created` trigger created its `profiles` row:
+  same id, `locale` `es`, `full_name` null (the dashboard sends no metadata).
+  `trainers`, `trainer_athletes` and `invitations` were still empty.
+- **After part 2**: `trainers` 1 row, with that id. `trainer_athletes` 1 row,
+  active (`ended_at` null), with that id as both `trainer_id` and
+  `athlete_id`, started 2026-11-13T14:38:28Z. `auth.users` 1, `profiles` 1,
+  `invitations` 0, `athlete_profiles` 0.
+
+Before the phone test, also checked (public, read-only): the live app answers
+200 on `/`, `/accept-invite` and `/sw.js`, and its bundle points at
+`https://cfxafmgjuyigayywntjn.supabase.co`.
+
 ## Remaining, in order (each hosted write needs Noé's separate yes)
 
 1. Done (see "Hosted write 3" above).
 2. Done (see "Hosted write 4" above).
 3. Done: the function and CORS checks are under "Hosted write 4", the REST
    select on `profiles` under the open point.
-4. First trainer: Noé creates the auth user in the dashboard (Authentication →
-   Users → Add user, auto-confirm) and chooses the email; Claude never asks
-   for the password. Read-only check that the profile row exists, then one SQL
-   write, shown first: the `trainers` row and the self-link in
-   `trainer_athletes`. The email never goes into the repo.
+4. Done (see "Hosted write 5" above).
 5. Phone end-to-end by Noé: invite `athlete-test@fitnessapp.test` ("Test
    Athlete") from the live app, send the link in a real WhatsApp message and
    look at the preview without tapping, open it on the phone (it must still
