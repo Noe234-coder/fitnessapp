@@ -16,7 +16,7 @@ function runtime yet, and the hosted project still has no users.
 | --- | ---------------------------------- | ------------------------ |
 | 1   | `config push --remote`             | Done, verified           |
 | 2   | `db push --remote`                 | Done, verified           |
-| 3   | `secrets set APP_BASE_URL`         | Not done, needs a yes    |
+| 3   | `secrets set APP_BASE_URL`         | Done, verified           |
 | 4   | `functions deploy invite-athlete`  | Not done, needs a yes    |
 | 5   | First trainer (dashboard + SQL)    | Not done, needs a yes    |
 
@@ -135,17 +135,41 @@ two names `invite-athlete` reads. But the docs list
 `SUPABASE_SECRET_KEYS` (a JSON object, the key under `default`), and the
 key-migration guide says the legacy keys keep working until the end of 2026.
 
-Not checked yet: whether this project (created 2026-11-07) has the legacy
-keys enabled at all. If it does not, the deployed function would answer
-`server_misconfigured` or fail to authenticate. To decide tomorrow, before
-deploying: deploy as is and test, or first change the function to read
-`SUPABASE_SECRET_KEYS` (a code change in `supabase/functions/`, with the local
-checks re-run).
+Checked on 2026-11-13 (read-only, by Claude; no key value printed):
+
+- `npx supabase projects api-keys` lists four keys: legacy `anon`, legacy
+  `service_role`, publishable `default`, secret `default`. So the legacy keys
+  exist on this project.
+- The gateway accepts the legacy `anon` key: `GET /auth/v1/settings` answers
+  200 with it, the same as with the publishable key. So the legacy keys are
+  enabled, not only listed.
+- `npx supabase secrets list` and `functions list` are both empty (the CLI
+  does not list the default `SUPABASE_*` variables), so the presence of
+  `SUPABASE_SERVICE_ROLE_KEY` in the function runtime can only be confirmed
+  after the deploy.
+
+Recommendation: deploy as is. A missing variable shows up at once as 500
+`server_misconfigured` on the no-JWT check (that check runs before the JWT
+one), with nothing written. Moving to `SUPABASE_SECRET_KEYS` before the legacy
+keys stop working (end of 2026 according to the migration guide) is a
+separate, later change.
+
+Side result of the same check, for item 3 below: a REST select on `profiles`
+with the publishable key answers HTTP 401, code 42501, "permission denied for
+table profiles" (the legacy `anon` key gets the same answer).
+
+## Hosted write 3: `npx supabase secrets set APP_BASE_URL=…` (done)
+
+Run by Noé on 2026-11-13. Verified afterwards (read-only, by Claude):
+`secrets list` shows exactly one secret, `APP_BASE_URL`, updated
+2026-11-13T14:26:17Z, on the linked project `cfxafmgjuyigayywntjn`. The CLI
+shows a SHA-256 digest instead of the value; it equals the digest of
+`https://fitnessapp.myfitnessapp.workers.dev` (https, no trailing slash, no
+newline), so the stored value is exactly the production origin.
 
 ## Remaining, in order (each hosted write needs Noé's separate yes)
 
-1. `npx supabase secrets set APP_BASE_URL=https://fitnessapp.myfitnessapp.workers.dev`
-   (a public value; exact origin, no trailing slash).
+1. Done (see "Hosted write 3" above).
 2. `npx supabase functions deploy invite-athlete`, then confirm
    `verify_jwt = false` is in effect (`get_edge_function`).
 3. Hosted checks, read-only or harmless:
