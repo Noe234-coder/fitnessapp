@@ -15,6 +15,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.119.0'
 
 import { corsHeaders } from './cors.ts'
+import { defaultSecretKey } from './secret-key.ts'
 
 const INVITATION_TTL_MS = 24 * 60 * 60 * 1000
 const MAX_EMAIL_LENGTH = 254
@@ -33,7 +34,8 @@ type LinkType = 'invite' | 'magiclink'
 
 interface Config {
   supabaseUrl: string
-  serviceRoleKey: string
+  /** The project's `default` secret key (`sb_secret_…`). */
+  secretKey: string
   /** Where the app is served, without a trailing slash. */
   appBaseUrl: string
   /** The only origin allowed to call this function from a browser. */
@@ -42,13 +44,13 @@ interface Config {
 
 function readConfig(): Config | null {
   const supabaseUrl = Deno.env.get('SUPABASE_URL')
-  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+  const secretKey = defaultSecretKey(Deno.env.get('SUPABASE_SECRET_KEYS'))
   const appBaseUrl = Deno.env.get('APP_BASE_URL')
-  if (!supabaseUrl || !serviceRoleKey || !appBaseUrl) return null
+  if (!supabaseUrl || !secretKey || !appBaseUrl) return null
   try {
     return {
       supabaseUrl,
-      serviceRoleKey,
+      secretKey,
       appBaseUrl: appBaseUrl.replace(/\/+$/, ''),
       appOrigin: new URL(appBaseUrl).origin,
     }
@@ -113,7 +115,7 @@ async function readBody(
 Deno.serve(async (req) => {
   if (!config) {
     console.error(
-      'invite-athlete: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY or APP_BASE_URL is missing or invalid',
+      'invite-athlete: SUPABASE_URL, SUPABASE_SECRET_KEYS (a JSON object with a "default" key) or APP_BASE_URL is missing or invalid',
     )
     return json(500, { error: 'server_misconfigured' }, {})
   }
@@ -130,9 +132,9 @@ Deno.serve(async (req) => {
     )
   }
 
-  // Service-role client: used to verify the caller, and for everything RLS
-  // does not let a trainer do himself.
-  const admin = createClient(config.supabaseUrl, config.serviceRoleKey, {
+  // Secret-key client (it acts as service_role): used to verify the caller,
+  // and for everything RLS does not let a trainer do himself.
+  const admin = createClient(config.supabaseUrl, config.secretKey, {
     auth: {
       persistSession: false,
       autoRefreshToken: false,

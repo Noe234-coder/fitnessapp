@@ -9,12 +9,16 @@
 // invitations it caused, so it can be run again without a reset.
 //
 // Local only: the URL and keys come from `supabase status`, which never
-// reports the hosted project.
+// reports the hosted project. It uses the local secret and publishable keys,
+// never the legacy service_role and anon ones.
 import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
 import { createClient } from '@supabase/supabase-js'
+
+// Plain TypeScript with no imports: Node 22 loads it as is.
+import { defaultSecretKey } from '../supabase/functions/invite-athlete/secret-key.ts'
 
 const FUNCTION_NAME = 'invite-athlete'
 const EDGE_RUNTIME_PORT = 8081
@@ -31,6 +35,11 @@ const status = JSON.parse(
 if (!/^http:\/\/(127\.0\.0\.1|localhost):/.test(status.API_URL ?? '')) {
   throw new Error('This script only runs against the local stack.')
 }
+if (!status.SECRET_KEY || !status.PUBLISHABLE_KEY) {
+  throw new Error(
+    '`supabase status` reports no secret or publishable key: is the stack running?',
+  )
+}
 
 const appBaseUrl = readAppBaseUrl()
 const appOrigin = new URL(appBaseUrl).origin
@@ -39,13 +48,9 @@ const functionUrl = `${status.FUNCTIONS_URL}/${FUNCTION_NAME}`
 const clientOptions = {
   auth: { persistSession: false, autoRefreshToken: false },
 }
-const admin = createClient(
-  status.API_URL,
-  status.SERVICE_ROLE_KEY,
-  clientOptions,
-)
+const admin = createClient(status.API_URL, status.SECRET_KEY, clientOptions)
 const newAnonClient = () =>
-  createClient(status.API_URL, status.ANON_KEY, clientOptions)
+  createClient(status.API_URL, status.PUBLISHABLE_KEY, clientOptions)
 
 const run = Math.random().toString(36).slice(2, 8)
 const newEmail = `invite-test-new-${run}@fitnessapp.test`
@@ -103,7 +108,7 @@ async function invite({
   method = 'POST',
   baseUrl = functionUrl,
 } = {}) {
-  const headers = { Origin: appOrigin, apikey: status.ANON_KEY }
+  const headers = { Origin: appOrigin, apikey: status.PUBLISHABLE_KEY }
   if (token) headers.Authorization = `Bearer ${token}`
   if (body !== undefined) headers['Content-Type'] = 'application/json'
   const response = await fetch(baseUrl, {
@@ -171,7 +176,41 @@ const hasNoSupabaseLink = (text) =>
 // Checks
 // ---------------------------------------------------------------------------
 
+/**
+ * The function reads its key from SUPABASE_SECRET_KEYS. The local runtime
+ * always sets that variable, so a missing or malformed value cannot be
+ * produced end to end: the parsing is checked here, and the function answers
+ * `server_misconfigured` (500) whenever it returns null.
+ */
+function checkSecretKeyParsing() {
+  check(
+    'SUPABASE_SECRET_KEYS: the `default` key of the JSON object is used',
+    defaultSecretKey('{"default":"sb_secret_example","other":"x"}') ===
+      'sb_secret_example',
+  )
+  const malformed = {
+    missing: undefined,
+    empty: '',
+    'not JSON': 'sb_secret_example',
+    'no default': '{"other":"sb_secret_example"}',
+    'empty default': '{"default":" "}',
+    'default not a string': '{"default":{"key":"sb_secret_example"}}',
+    'an array': '["sb_secret_example"]',
+    'JSON null': 'null',
+  }
+  const accepted = Object.entries(malformed)
+    .filter(([, raw]) => defaultSecretKey(raw) !== null)
+    .map(([name]) => name)
+  check(
+    'SUPABASE_SECRET_KEYS: missing or malformed values give no key (-> server_misconfigured)',
+    accepted.length === 0,
+    accepted,
+  )
+}
+
 async function main() {
+  checkSecretKeyParsing()
+
   const { userId: trainerId, token: trainerToken } =
     await signIn('t1@fitnessapp.test')
   const { token: nonTrainerToken } = await signIn('u@fitnessapp.test')
@@ -262,11 +301,11 @@ async function main() {
   }
   {
     const response = await invite({
-      token: status.ANON_KEY,
+      token: status.PUBLISHABLE_KEY,
       body: { email: newEmail },
     })
     check(
-      'the anon key as bearer (a signed-out client) -> 401 unauthorized',
+      'the publishable key as bearer (a signed-out client) -> 401 unauthorized',
       response.status === 401 && response.json?.error === 'unauthorized',
       { status: response.status, body: response.text },
     )
@@ -550,7 +589,7 @@ async function main() {
     }
   }
   {
-    const stranger = createClient(status.API_URL, status.ANON_KEY, {
+    const stranger = createClient(status.API_URL, status.PUBLISHABLE_KEY, {
       ...clientOptions,
       global: { headers: { Authorization: `Bearer ${nonTrainerToken}` } },
     })
