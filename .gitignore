@@ -23,3 +23,13 @@ npm-debug.log*
 
 # Wrangler local state
 .wrangler/
+
+# Database dumps and backups: never committed, in clear or encrypted
+# (docs/backup-restore.md). Migrations, the seed and the pgTAP tests are .sql
+# files under supabase/, so plain .sql is ignored at the repository root only.
+/backups/
+/*.sql
+*.sql.gz
+*.dump
+*.age
+*.age.partial

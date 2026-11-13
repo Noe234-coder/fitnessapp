@@ -1,0 +1,108 @@
+name: Backup
+
+# Twice a week: an encrypted dump of the hosted database, stored as a workflow
+# artifact, and enough activity to keep the free-plan Supabase project from
+# pausing (it pauses after a week without any).
+#
+# This repository is public, and so are its logs and artifacts. The dump is
+# encrypted before it reaches the disk, only the encrypted file is uploaded,
+# and no step prints a secret or anything from a row.
+# See docs/backup-restore.md.
+
+on:
+  schedule:
+    # Wednesday and Sunday at 03:23 UTC.
+    - cron: '23 3 * * 3,0'
+  workflow_dispatch:
+
+# The default token can only read the repository. The job needs no more.
+permissions:
+  contents: read
+
+# One backup at a time: a second run waits for the one in progress.
+concurrency:
+  group: backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    name: Encrypted database backup and keep-alive
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Holds BACKUP_DB_URL and BACKUP_AGE_RECIPIENT; restricted to `main`.
+    environment: backup
+    steps:
+      - uses: actions/checkout@v7
+
+      # pg_dump must be the server's major version (17). The runner's own
+      # client may be older, so it comes from the PostgreSQL apt repository.
+      - name: Install age and the PostgreSQL 17 client
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends age postgresql-common ca-certificates
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y -qq --no-install-recommends postgresql-client-17
+          /usr/lib/postgresql/17/bin/pg_dump --version
+          age --version
+
+      - name: Check the backup settings
+        env:
+          BACKUP_DB_URL: ${{ secrets.BACKUP_DB_URL }}
+          BACKUP_AGE_RECIPIENT: ${{ vars.BACKUP_AGE_RECIPIENT }}
+        run: |
+          if [ -z "$BACKUP_DB_URL" ]; then
+            echo "::error::Environment secret BACKUP_DB_URL is not set."
+            exit 1
+          fi
+          if [ -z "$BACKUP_AGE_RECIPIENT" ]; then
+            echo "::error::Environment variable BACKUP_AGE_RECIPIENT is not set."
+            exit 1
+          fi
+
+      # The script pipes pg_dump into gzip and age: no clear dump is written
+      # to the runner's disk. It prints the size of the encrypted file only.
+      - name: Dump, compress and encrypt
+        id: dump
+        env:
+          BACKUP_DB_URL: ${{ secrets.BACKUP_DB_URL }}
+          BACKUP_AGE_RECIPIENT: ${{ vars.BACKUP_AGE_RECIPIENT }}
+          PG_DUMP: /usr/lib/postgresql/17/bin/pg_dump
+        run: |
+          name="db-backup-$(date -u +%F)-$GITHUB_RUN_ID"
+          mkdir -p backups
+          scripts/backup-db.sh "backups/$name.sql.gz.age"
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "Files to upload: $(find backups -type f | wc -l)"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.dump.outputs.name }}
+          path: backups/*.sql.gz.age
+          if-no-files-found: error
+          retention-days: 90
+
+      # The dump is the database connection. This is the API request: any
+      # answer from the API counts, an error from the gateway does not.
+      - name: Keep-alive request to the API
+        if: ${{ !cancelled() }}
+        env:
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          if [ -z "$VITE_SUPABASE_URL" ] || [ -z "$VITE_SUPABASE_PUBLISHABLE_KEY" ]; then
+            echo "::error::Repository variable VITE_SUPABASE_URL or VITE_SUPABASE_PUBLISHABLE_KEY is not set."
+            exit 1
+          fi
+          code="$(curl --silent --output /dev/null --write-out '%{http_code}' \
+            --max-time 30 --retry 2 \
+            --header "apikey: $VITE_SUPABASE_PUBLISHABLE_KEY" \
+            "$VITE_SUPABASE_URL/rest/v1/")" || true
+          case "$code" in
+            [1-4][0-9][0-9])
+              echo "The API answered HTTP $code."
+              ;;
+            *)
+              echo "::error::The API did not answer (HTTP $code)."
+              exit 1
+              ;;
+          esac
