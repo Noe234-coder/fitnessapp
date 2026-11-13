@@ -51,6 +51,8 @@ App (Node 22, see `.nvmrc`):
 - `supabase/tests/database/` — pgTAP tests (`*.test.sql`): `00_meta`, `01_identity`, `02_libraries`, `03_invitations`, …
 - `supabase/functions/invite-athlete/` — the invite Edge Function (`index.ts`, `cors.ts`, `secret-key.ts`). Deno, not part of the app build or `tsc`. `supabase/functions/.env` (gitignored) holds `APP_BASE_URL` and no key: the runtime, local and hosted, gives the function `SUPABASE_URL` and `SUPABASE_SECRET_KEYS` (a JSON object; the function uses the key named `default`, with no fallback to the legacy `service_role` key).
 - `scripts/test-invite-function.mjs` — local end-to-end checks for that function, with the local secret and publishable keys from `supabase status`.
+- `scripts/backup-db.sh` — dumps a database's data (`public`, `auth.users`, `auth.identities`) and encrypts it with `age` in one pipeline. Used by the backup workflow; it has no default target.
+- `docs/backup-restore.md` — what the backups hold, where the keys are, and how to restore. **Read it before touching the backup workflow or restoring anything.**
 - `supabase/seed.sql` — local-only: the `tests` helper schema (`tests.create_user`, `tests.user_id('t1')`, `tests.authenticate_as`) and the fixtures T1, A1, A2, T2, B1, X, U (`<name>@fitnessapp.test`). Never pushed to the hosted project.
 
 App (`src/`, imported through the `@/` alias):
@@ -69,6 +71,7 @@ PWA, hosting and CI:
 - `public/` — icons (`logo.svg` is the source, a placeholder letter "F"; `favicon.svg` is hand-written; the PNGs, including `apple-touch-icon.png`, are generated and committed) and `_headers` (Cloudflare cache rules).
 - `wrangler.jsonc` — the Cloudflare Worker: assets-only (no `main`), serves `./dist` with SPA fallback.
 - `.github/workflows/ci.yml` — the CI and deploy workflow.
+- `.github/workflows/backup.yml` — the scheduled backup and keep-alive of the hosted project (see "Hosted project").
 
 ## CI and deploy
 `.github/workflows/ci.yml` runs on every push (all branches) and on pull requests:
@@ -101,6 +104,7 @@ What is on it:
 - **Database** (`db push`): the four migrations in `supabase/migrations/`. The seed and the `tests` schema are not there.
 - **Edge Function:** `invite-athlete`, `verify_jwt` false, with one secret, `APP_BASE_URL` = the production origin. It is deployed by hand (`functions deploy`, from the branch that holds the code), not by CI.
 - **API keys:** the app uses the publishable key `default` and the function the secret key `default`. The legacy `anon` and `service_role` keys were disabled on 2026-11-13 (step 4c) in Settings → API Keys; Supabase's migration guide says they can be re-activated there. Nothing in the repo uses them. The JWT signing keys were not changed: moving to asymmetric keys is a separate migration, and the legacy JWT secret can only be revoked while the legacy keys are disabled.
+- **Backups and keep-alive:** `.github/workflows/backup.yml` runs on Wednesday and Sunday at 03:23 UTC and by hand (`workflow_dispatch`), never on a push. It dumps the data with `scripts/backup-db.sh`, encrypted with `age`, into a workflow artifact kept 90 days, and sends one API request; together they keep the free-plan project from pausing. It runs in the GitHub environment `backup` (restricted to `main`), which holds the secret `BACKUP_DB_URL` (the session pooler connection string) and the variable `BACKUP_AGE_RECIPIENT` (an age public key). The private key is with Noé only. The dump is read-only: it is not a hosted write. Everything else, the restore included, is in `docs/backup-restore.md`.
 - **Users:** one, the first trainer, with his `trainers` row and an active self-link in `trainer_athletes`. There is no UI to create a trainer: the auth user is created in the dashboard (Authentication → Users → Add user, auto-confirm), then one SQL transaction inserts the `trainers` row and the self-link. His email and id are not in the repo.
 
 Working with it:
@@ -169,6 +173,7 @@ Open:
 - Test fixtures are synthetic only: `@fitnessapp.test` users, invented foods and numbers.
 - Commits use the GitHub noreply email, never a personal or school address.
 - No env files except `.env.example`, which holds placeholders or local-stack values only.
+- Workflow logs and artifacts are public too. A database dump is never committed, and never uploaded or left on a runner's disk in clear: it is encrypted with `age` in the same pipeline that produces it. No workflow step prints a connection string, a key or anything from a row; sizes and counts only.
 
 ### Offline
 - The athlete's week view and all athlete logging (sets, meals, daily metrics, check-ins, measurements) must keep working without a connection and sync on reconnect. Don't introduce features on those screens that require being online.
