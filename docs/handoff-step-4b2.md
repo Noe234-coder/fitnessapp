@@ -9,15 +9,15 @@ CLAUDE.md ("Hosted project" note, step 7).
 
 ## Where we are
 
-Two of the four hosted writes are done and verified. Nothing is deployed to the
-function runtime yet, and the hosted project still has no users.
+Four of the five hosted writes are done and verified. `invite-athlete` is
+deployed, and the hosted project still has no users.
 
 | #   | Hosted write                       | State                    |
 | --- | ---------------------------------- | ------------------------ |
 | 1   | `config push --remote`             | Done, verified           |
 | 2   | `db push --remote`                 | Done, verified           |
 | 3   | `secrets set APP_BASE_URL`         | Done, verified           |
-| 4   | `functions deploy invite-athlete`  | Not done, needs a yes    |
+| 4   | `functions deploy invite-athlete`  | Done, verified           |
 | 5   | First trainer (dashboard + SQL)    | Not done, needs a yes    |
 
 ## Step 0 (done)
@@ -143,10 +143,10 @@ Checked on 2026-11-13 (read-only, by Claude; no key value printed):
 - The gateway accepts the legacy `anon` key: `GET /auth/v1/settings` answers
   200 with it, the same as with the publishable key. So the legacy keys are
   enabled, not only listed.
-- `npx supabase secrets list` and `functions list` are both empty (the CLI
+- `npx supabase secrets list` and `functions list` were both empty (the CLI
   does not list the default `SUPABASE_*` variables), so the presence of
-  `SUPABASE_SERVICE_ROLE_KEY` in the function runtime can only be confirmed
-  after the deploy.
+  `SUPABASE_SERVICE_ROLE_KEY` in the function runtime could only be confirmed
+  after the deploy. It was: see "Hosted write 4".
 
 Recommendation: deploy as is. A missing variable shows up at once as 500
 `server_misconfigured` on the no-JWT check (that check runs before the JWT
@@ -167,19 +167,54 @@ shows a SHA-256 digest instead of the value; it equals the digest of
 `https://fitnessapp.myfitnessapp.workers.dev` (https, no trailing slash, no
 newline), so the stored value is exactly the production origin.
 
+## Hosted write 4: `npx supabase functions deploy invite-athlete` (done)
+
+Run by Noé in his own terminal on 2026-11-13; according to Noé it finished
+without errors.
+
+Verification (read-only, all run by Claude on 2026-11-13; no key or token was
+printed, and every POST carried the body `{}`):
+
+- **`functions list`**: one function, `invite-athlete`, status `ACTIVE`,
+  version 1, `verify_jwt: false`, updated 2026-11-13T14:28:23Z.
+- **Function responses**, at
+  `https://cfxafmgjuyigayywntjn.supabase.co/functions/v1/invite-athlete`:
+
+  | Request                                          | Status | Code                 |
+  | ------------------------------------------------ | ------ | -------------------- |
+  | POST, no `Authorization` header                  | 401    | `unauthorized`       |
+  | POST, Bearer = the legacy `anon` key             | 401    | `unauthorized`       |
+  | POST, Bearer = the publishable key               | 401    | `unauthorized`       |
+  | GET                                              | 405    | `method_not_allowed` |
+  | PUT                                              | 405    | `method_not_allowed` |
+  | OPTIONS preflight, `Origin` = the app            | 204    | no body              |
+  | OPTIONS preflight, `Origin: https://example.com` | 204    | no body              |
+
+- **The env-name open point is closed**: no `server_misconfigured`, so
+  `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` and `APP_BASE_URL` are all
+  present in the hosted runtime. The legacy `anon` key is a valid JWT that
+  belongs to no user and it still gets 401, with the function's own code: the
+  check is the function's, not the gateway's.
+- **CORS**: every one of the responses above, and a POST with each of the two
+  origins, carries
+  `Access-Control-Allow-Origin: https://fitnessapp.myfitnessapp.workers.dev`
+  verbatim, whatever `Origin` the request sent. Unlike the local gateway, the
+  hosted one does not replace it with `*`, on the preflight or on the proxied
+  responses. A page on another origin gets a header that does not match its
+  own origin, so the browser blocks it. CLAUDE.md's statement ("allowing only
+  the origin of `APP_BASE_URL`, never `*`") holds on the hosted project as
+  written; the comment in `cors.ts` describes the local stack only and is
+  still accurate.
+- **Row counts afterwards** (`db query --remote --read-only`): `auth.users` 0,
+  and 0 in each of the 9 public tables, `invitations` and `trainer_athletes`
+  included.
+
 ## Remaining, in order (each hosted write needs Noé's separate yes)
 
 1. Done (see "Hosted write 3" above).
-2. `npx supabase functions deploy invite-athlete`, then confirm
-   `verify_jwt = false` is in effect (`get_edge_function`).
-3. Hosted checks, read-only or harmless:
-   - the function without a JWT → 401 `unauthorized`; a wrong method → report
-     the code returned;
-   - CORS: an `OPTIONS` request with `Origin` = the production origin and one
-     with `Origin: https://evil.example`; record the
-     `Access-Control-Allow-Origin` of each exactly;
-   - a REST select on `profiles` with the publishable key returns no rows or
-     a permission error.
+2. Done (see "Hosted write 4" above).
+3. Done: the function and CORS checks are under "Hosted write 4", the REST
+   select on `profiles` under the open point.
 4. First trainer: Noé creates the auth user in the dashboard (Authentication →
    Users → Add user, auto-confirm) and chooses the email; Claude never asks
    for the password. Read-only check that the profile row exists, then one SQL
