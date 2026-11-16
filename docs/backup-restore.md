@@ -99,7 +99,9 @@ not been tried.
 
 ## Getting a backup
 
-You need `age`, `gzip`, `psql` 17 or newer, and the private key file.
+You need `age`, `gzip`, `psql` 17.6 or newer, and the private key file. An
+older `psql` stops at the `\restrict` line that `pg_dump` writes at the top of
+the dump.
 
 ```
 gh run list --workflow backup.yml --limit 5
