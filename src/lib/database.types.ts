@@ -211,6 +211,166 @@ isOneToOne: false
       referencedColumns: ["profile_id"]
     }
                   ]
+                },"macro_targets": {
+                  Row: {
+                    "athlete_id": string,"carbs_g": number,"created_at": string,"day_type": string,"effective_on": string,"fat_g": number,"id": string,"note": string | null,"protein_g": number,"trainer_id": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "athlete_id": string,"carbs_g": number,"created_at"?: string,"day_type": string,"effective_on": string,"fat_g": number,"id"?: string,"note"?: string | null,"protein_g": number,"trainer_id": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "athlete_id"?: string,"carbs_g"?: number,"created_at"?: string,"day_type"?: string,"effective_on"?: string,"fat_g"?: number,"id"?: string,"note"?: string | null,"protein_g"?: number,"trainer_id"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "macro_targets_athlete_id_fkey"
+      columns: ["athlete_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "macro_targets_trainer_id_fkey"
+      columns: ["trainer_id"]
+isOneToOne: false
+      referencedRelation: "trainers"
+      referencedColumns: ["profile_id"]
+    }
+                  ]
+                },"meal_option_items": {
+                  Row: {
+                    "amount": number,"amount_unit": string,"athlete_id": string,"created_at": string,"food_id": string,"id": string,"meal_option_id": string,"position": number,"trainer_id": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "amount": number,"amount_unit"?: string,"athlete_id": string,"created_at"?: string,"food_id": string,"id"?: string,"meal_option_id": string,"position"?: number,"trainer_id": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "amount"?: number,"amount_unit"?: string,"athlete_id"?: string,"created_at"?: string,"food_id"?: string,"id"?: string,"meal_option_id"?: string,"position"?: number,"trainer_id"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "meal_option_items_athlete_id_fkey"
+      columns: ["athlete_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "meal_option_items_food_id_trainer_id_fkey"
+      columns: ["food_id","trainer_id"]
+isOneToOne: false
+      referencedRelation: "foods"
+      referencedColumns: ["id","trainer_id"]
+    },{
+      foreignKeyName: "meal_option_items_meal_option_id_athlete_id_trainer_id_fkey"
+      columns: ["meal_option_id","athlete_id","trainer_id"]
+isOneToOne: false
+      referencedRelation: "meal_options"
+      referencedColumns: ["id","athlete_id","trainer_id"]
+    },{
+      foreignKeyName: "meal_option_items_trainer_id_fkey"
+      columns: ["trainer_id"]
+isOneToOne: false
+      referencedRelation: "trainers"
+      referencedColumns: ["profile_id"]
+    }
+                  ]
+                },"meal_options": {
+                  Row: {
+                    "athlete_id": string,"created_at": string,"id": string,"label": string | null,"meal_id": string,"notes": string | null,"position": number,"trainer_id": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "athlete_id": string,"created_at"?: string,"id"?: string,"label"?: string | null,"meal_id": string,"notes"?: string | null,"position"?: number,"trainer_id": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "athlete_id"?: string,"created_at"?: string,"id"?: string,"label"?: string | null,"meal_id"?: string,"notes"?: string | null,"position"?: number,"trainer_id"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "meal_options_athlete_id_fkey"
+      columns: ["athlete_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "meal_options_meal_id_athlete_id_trainer_id_fkey"
+      columns: ["meal_id","athlete_id","trainer_id"]
+isOneToOne: false
+      referencedRelation: "meals"
+      referencedColumns: ["id","athlete_id","trainer_id"]
+    },{
+      foreignKeyName: "meal_options_trainer_id_fkey"
+      columns: ["trainer_id"]
+isOneToOne: false
+      referencedRelation: "trainers"
+      referencedColumns: ["profile_id"]
+    }
+                  ]
+                },"meal_plans": {
+                  Row: {
+                    "athlete_id": string,"copied_from_id": string | null,"created_at": string,"guidelines": string | null,"id": string,"name": string,"status": string,"trainer_id": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "athlete_id": string,"copied_from_id"?: string | null,"created_at"?: string,"guidelines"?: string | null,"id"?: string,"name": string,"status"?: string,"trainer_id": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "athlete_id"?: string,"copied_from_id"?: string | null,"created_at"?: string,"guidelines"?: string | null,"id"?: string,"name"?: string,"status"?: string,"trainer_id"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "meal_plans_athlete_id_fkey"
+      columns: ["athlete_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "meal_plans_copied_from_id_trainer_id_fkey"
+      columns: ["copied_from_id","trainer_id"]
+isOneToOne: false
+      referencedRelation: "meal_plans"
+      referencedColumns: ["id","trainer_id"]
+    },{
+      foreignKeyName: "meal_plans_trainer_id_fkey"
+      columns: ["trainer_id"]
+isOneToOne: false
+      referencedRelation: "trainers"
+      referencedColumns: ["profile_id"]
+    }
+                  ]
+                },"meals": {
+                  Row: {
+                    "athlete_id": string,"created_at": string,"day_type": string,"id": string,"meal_plan_id": string,"name": string,"notes": string | null,"position": number,"target_carbs_g": number,"target_fat_g": number,"target_protein_g": number,"trainer_id": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "athlete_id": string,"created_at"?: string,"day_type"?: string,"id"?: string,"meal_plan_id": string,"name": string,"notes"?: string | null,"position"?: number,"target_carbs_g": number,"target_fat_g": number,"target_protein_g": number,"trainer_id": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "athlete_id"?: string,"created_at"?: string,"day_type"?: string,"id"?: string,"meal_plan_id"?: string,"name"?: string,"notes"?: string | null,"position"?: number,"target_carbs_g"?: number,"target_fat_g"?: number,"target_protein_g"?: number,"trainer_id"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "meals_athlete_id_fkey"
+      columns: ["athlete_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "meals_meal_plan_id_athlete_id_trainer_id_fkey"
+      columns: ["meal_plan_id","athlete_id","trainer_id"]
+isOneToOne: false
+      referencedRelation: "meal_plans"
+      referencedColumns: ["id","athlete_id","trainer_id"]
+    },{
+      foreignKeyName: "meals_trainer_id_fkey"
+      columns: ["trainer_id"]
+isOneToOne: false
+      referencedRelation: "trainers"
+      referencedColumns: ["profile_id"]
+    }
+                  ]
                 },"mesocycles": {
                   Row: {
                     "athlete_id": string | null,"copied_from_id": string | null,"created_at": string,"id": string,"is_template": boolean,"name": string,"starts_on": string | null,"status": string,"trainer_id": string,"updated_at": string
