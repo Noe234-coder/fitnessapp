@@ -1,6 +1,7 @@
 # FitnessApp — Schema v1
 
 > **APPROVED 2026-11-10.** Not applied anywhere yet. Written 2026-11-09 (roadmap step 2a), reviewed with Noé on 2026-11-10 (D1–D12 and §5–6, one choice at a time).
+> **Revised 2026-11-16** with the trainer's answers: technique codes (partials became a technique), full check-in options, trainer corrections of logs, women's hip measurement.
 > This document is the reference for the migrations of step 2b. Inputs: decisions.md, trainer-workflow.md, reference-oct28-schema.md.
 > Open items that don't block the migrations are in §9; notes for later steps are in §11.
 
@@ -131,11 +132,11 @@ A trainer can also be his own athlete (D1): he then has both columns' rights on 
 
 ### D11 · Measurements and check-ins use fixed columns
 - `body_measurements` has his MEDIDAS sites plus `neck_cm`. His measuring instructions ("contracted, except glute", "hip 2 cm below the navel") go in the column comments and UI hints.
-- `weekly_checkins` mirrors his FORMULARIO questions; every fixed answer is a text code plus a check constraint (§2: English codes, labels in i18n). **Adherence answers are buckets, not numbers** ('100', 'gt_80', 'gt_50' …).
+- `weekly_checkins` mirrors his FORMULARIO questions; every fixed answer is a text code plus a check constraint (§2: English codes, labels in i18n). **Adherence answers are buckets, not numbers** ('100', 'gt_80', 'gt_50', 'lt_50').
 - `week_starts_on` is the Monday of the week the check-in is **about**.
 - **Body fat = US Navy formula, inch version** (verified 2026-11-10 against his calculator: it uses waist, neck and height only; weight is shown but unused). Computed in a view from `sex` and `height_cm` (`athlete_profiles`), converting cm to inches:
   - men: 86.010·log10(waist − neck) − 70.041·log10(height) + 36.76, with **waist = `navel_cm`**;
-  - women: 163.205·log10(waist + hip − neck) − 97.684·log10(height) − 78.387; which measurement is the hip is open (§9).
+  - women: 163.205·log10(waist + hip − neck) − 97.684·log10(height) − 78.387, with **waist = `navel_cm`** and **hip = `hip_cm`** (his "cadera", 2 cm below the navel; confirmed 2026-11-16). This is not the Navy's own hip definition (the widest point of the glutes), so results can differ from other Navy calculators.
 - **Why fixed columns:** typed, validated, plain tables for the trainer. His check-in has had the same questions from week 85 to 108; adding one later is a ~10-minute migration.
 - **Rejected:** configurable forms or key-value measurements. Only worth it if a second trainer needs different questions.
 
@@ -209,7 +210,9 @@ Checks: templates have no `starts_on`; an active athlete mesocycle has one. One 
 **exercise_prescriptions** — a version of the sets, valid from a given week on.
 `day_exercise_id` ↑ · `from_week` (≥ 1). Unique (day_exercise_id, from_week).
 
-**prescribed_sets** — `exercise_prescription_id` ↑ · `set_number` · `target_reps_min` · `target_reps_max` · `is_per_side` · `target_effort` ('rir' | 'failure' | 'failure_partials'; null for warm-up) · `target_rir_min` · `target_rir_max` · `technique` (null, or a code from his glossary: drop set, rest-pause, myo-reps, cluster…; exact list in §9) · `notes`.
+**prescribed_sets** — `exercise_prescription_id` ↑ · `set_number` · `target_reps_min` · `target_reps_max` · `is_per_side` · `target_effort` ('rir' | 'failure'; null for warm-up) · `target_rir_min` · `target_rir_max` · `technique` (null, or one of `myo_reps`, `rest_pause`, `drop_set`, `partials`) · `notes`.
+
+He writes the technique in the same cell as the effort. One technique per set; if he ever combines two, `technique` becomes `text[]` in a migration.
 
 How his sheet maps:
 
@@ -219,9 +222,10 @@ How his sheet maps:
 | "20" | reps 20–20 |
 | "8/10 x lado" | reps 8–10, per side |
 | "1 A 0" | effort rir, RIR 0–1 |
-| "F + P" | effort failure_partials |
+| "F + P" | effort failure, technique partials |
+| effort + a technique in the same cell | effort as above, plus `technique` |
 
-Checks: `target_reps_min ≤ target_reps_max`; the RIR columns are set if and only if effort is 'rir'; `target_rir_min ≤ target_rir_max`.
+Checks: `target_reps_min ≤ target_reps_max`; the RIR columns are set if and only if effort is 'rir'; `target_rir_min ≤ target_rir_max`; `technique` is null when `target_effort` is null.
 
 ### Nutrition plan
 
@@ -259,16 +263,18 @@ Every table has `athlete_id`. Logs point into plans with `(x_id, athlete_id)`, s
 - Rest: `sleep_quality`.
 - `message_to_trainer`.
 
-Answer codes seen in his form so far (the full dropdown lists are pending, §9):
+Answer codes: the complete lists (confirmed 2026-11-16). Every answer is nullable. Codes are ordered best → worst.
 
 | Column | Codes (es label) |
 |---|---|
-| training_adherence, diet_adherence | `100` (100%) · `gt_80` (>80%) · `gt_50` (>50%) |
-| recovery | `very_good` (Muy buena) · `good` (Buena) · `slight_soreness` (Ligeras agujetas) |
-| can_progress | `yes_most` (Sí en la mayoría) · `yes_some` (En algunos sí) |
-| energy, motivation, diet_satisfaction | `very_high` (Muy alto) · `high` (Alto) · `medium` (Medio) |
-| satiety | 1 Tengo muchísima hambre · 2 Tengo hambre · 3 Estoy bien · 4 Me encuentro saciado · 5 Me cuesta acabar la comida |
-| sleep_quality | `excellent` (Excelente) · `good` (Buena) · `fair` (Regular) |
+| training_adherence, diet_adherence | `100` (100%) · `gt_80` (>80%) · `gt_50` (>50%) · `lt_50` (<50%) |
+| recovery | `very_good` (Muy buena) · `good` (Buena) · `slight_soreness` (Ligeras agujetas) · `heavy_soreness` (Muchas agujetas) |
+| can_progress | `yes_most` (Sí en la mayoría) · `yes_some` (En algunos sí) · `few` (En pocos ejercicios) · `none` (No en ninguno) |
+| energy, motivation, diet_satisfaction | `very_high` (Muy alto) · `high` (Alto) · `medium` (Medio) · `low` (Bajo) |
+| satiety | smallint 1–5: 1 Tengo muchísima hambre · 2 Tengo hambre · 3 Estoy bien · 4 Me encuentro saciado, perfecto · 5 Me cuesta acabar la comida, es demasiada |
+| sleep_quality | `excellent` (Excelente) · `good` (Buena) · `fair` (Regular) · `poor` (Mala) |
+
+Satiety is not a "higher is better" scale: 1 and 5 are both warnings.
 
 ### Views
 
@@ -298,7 +304,7 @@ All views use `security_invoker = true`, so the caller's RLS applies.
 | Libraries | select if `is_athlete_of(trainer_id)`; **plus** select of rows used in his own plans (exercises via day_exercises, their movement categories, foods via meal_option_items) | all if `trainer_id = uid` |
 | Training plans | select if `athlete_id = uid` (never templates) | all if `trainer_id = uid and (athlete_id is null or athlete_id in (trainer_athlete_ids()))` |
 | Nutrition plans | select if `athlete_id = uid` | all if `trainer_id = uid and athlete_id in (trainer_athlete_ids())` |
-| Logs | select if `athlete_id = uid`; insert/update/delete if `athlete_id = uid and has_active_trainer()` | select if `athlete_id in (trainer_athlete_ids())` |
+| Logs | select if `athlete_id = uid`; insert/update/delete if `athlete_id = uid and has_active_trainer()` | select if `athlete_id in (trainer_athlete_ids())`; update of `set_logs`, `daily_metrics`, `body_measurements` with the same condition (using and with check) |
 | profiles | own row + own active trainer | own row + his athletes; update own `full_name`/`locale` only (column grant) |
 | athlete_profiles | select own | all for his athletes |
 | trainers, trainer_athletes, invitations | select own rows | select own rows; writes only through the Edge Function (service role) or SQL |
@@ -306,7 +312,10 @@ All views use `security_invoker = true`, so the caller's RLS applies.
 - Permissive policies are ORed, so a self-linked trainer passes the athlete policies on his own rows and the trainer policies on everyone's.
 - When a link ends, the old trainer loses read and write on that athlete's plans and logs immediately (the athlete leaves `trainer_athlete_ids()`); his templates are unaffected.
 - Athletes can read their trainer's **whole** library while linked: the swap table points at foods outside the plan, and the offline cache needs them. **Trade-off:** athletes can see his full exercise and food lists.
-- Trainers can't edit athletes' logs in v1 (read-only). If the trainer wants to correct logged numbers (§9), that's one extra update policy, not a schema change.
+- **Trainer corrections** (decided 2026-11-16): the trainer can update, but not insert or delete, `set_logs`, `daily_metrics` and `body_measurements` rows of his active athletes. He can't write `weekly_checkins`, `meal_logs` or `training_sessions`.
+  - The composite FKs stop a correction from moving a row to another athlete or another session.
+  - Last write wins against the athlete's outbox, which sends only the fields that changed.
+  - No audit trail in v1 (§8).
 - The "rows used in his own plans" library policies are added in the plans migrations (they reference plan tables).
 
 ## 6. Policy tests (pgTAP, `npx supabase test db`)
@@ -319,6 +328,8 @@ Fixtures: trainer **T1** with athletes A1 and A2, one template and a self-link; 
 | Write rules | Athletes can't write plans or libraries; T1 can't write athlete logs or plans for B1; a plan can't use T2's exercises or foods |
 | FK guarantees | A1's set log pointing at A2's session is rejected (D3); a template day under an athlete mesocycle is rejected, and the reverse; a session on a template day is rejected |
 | Triggers | A session on a warm-up day is rejected; an option item in 'unit' for a food without `unit_grams` is rejected |
+| Checks | A technique or check-in code outside the lists is rejected; a technique on a warm-up set is rejected |
+| Corrections | T1 updates A1's set log, daily metric and measurement; can't update A1's check-in, meal log or session; can't update B1's or X's rows; can't change `athlete_id` to A2 |
 | Former athlete X | Reads his logs and old plans with exercise and food names; can't insert, update or delete logs; T1 reads nothing of X |
 | Self-link | T1 logs his own session; his own mesocycle is not a template |
 | Upsert | The same `daily_metrics` natural key written twice → one row (select + insert + update policies) |
@@ -333,10 +344,12 @@ Each migration step adds the tests for the tables it creates; the meta tests cov
 2. `…_create_identity` — profiles (+ sign-up trigger), trainers, trainer_athletes, invitations, athlete_profiles, helper functions, RLS.
 3. `…_create_libraries` — movement_categories, exercises, foods, food_swaps, RLS.
 
-**2b-2** (one session, maybe two):
-4. `…_create_training_plans` (+ library "used in own plans" policies for exercises/categories, warm-up partial index)
-5. `…_create_nutrition_plans` (+ foods "used in own plans" policy, unit trigger)
-6. `…_create_athlete_logs` (+ warm-up session trigger)
+**2b-2a** (one session):
+4. `…_create_training_plans` (+ library "used in own plans" policies for exercises/categories, warm-up partial index, technique codes)
+5. `…_create_nutrition_plans` (+ foods "used in own plans" policy, unit trigger, index on `food_swaps (from_food_id, trainer_id)`)
+
+**2b-2b** (one session):
+6. `…_create_athlete_logs` (+ warm-up session trigger, check-in codes, trainer correction policies)
 7. `…_create_views`
 
 Plus `supabase/tests/database/*.test.sql`, and `supabase/seed.sql` with test-only helpers and a few local fixtures (seed.sql is never pushed to the hosted project).
@@ -351,17 +364,21 @@ Everything runs on the local stack only. Pushing to the hosted project is a sepa
 - Exercise substitution during a session (machine taken) → nullable `performed_exercise_id` on `set_logs`.
 - Recording which swaps were applied → `meal_log_swaps`.
 - Supplements as a table athletes tick off (free text in `guidelines` for now).
-- Trainer corrections of athlete logs → one update policy.
+- An audit trail of trainer corrections.
 - Per-trainer custom check-in questions or measurement sites.
 - Open Food Facts foods → `source = 'open_food_facts'`, `source_ref` = barcode.
 
-## 9. Open items (asked to the trainer 2026-11-10; none blocks 2b-1)
+## 9. Open items
 
-- Full option list of each check-in dropdown (only the answers actually used are known, §4). Needed before 2b-2 (`weekly_checkins` checks).
-- Body fat for women: which measurement is the hip — `glute_cm` (widest point, the Navy definition) or `hip_cm` (his "2 cm below the navel")? Needed before the views migration.
-- Technique glossary codes for `prescribed_sets.technique` (what is "windows maker"?). Needed before 2b-2.
-- Is he OK with importing his exercises and notes from the sheets? Needed before step 5.
-- Does he want to correct athletes' logged numbers himself? Can be added any time (§5).
+Only one is open:
+- The scope of trainer corrections (`set_logs`, `daily_metrics`, `body_measurements`, §5) is an assumption. If he asks for more, widening it is one policy per table.
+
+Resolved 2026-11-16 (the items asked on 2026-11-10):
+- Technique codes for `prescribed_sets.technique`: `myo_reps`, `rest_pause`, `drop_set`, `partials` (§4).
+- The full option list of each check-in dropdown (§4).
+- He is OK with importing his exercises and notes from the sheets (step 5).
+- He wants to correct athletes' logged numbers himself (§5).
+- Body fat for women: the hip is `hip_cm` (D11).
 
 Resolved 2026-11-10: kcal = 4/4/9 (D8); body-fat formula = Navy, inch version (D11); swap table is shared per trainer (D10).
 
@@ -371,6 +388,7 @@ All logged in decisions.md on 2026-11-10 ("Schema v1 approved").
 
 ## 11. Notes for later steps (UI and client rules decided during the review)
 
+- **Step 5 (seed script):** splits his effort cell into `target_effort` + `technique` (§4).
 - **Step 6 (workout builder):**
   - "Only this week": creates version W with the change plus version W+1 restoring the previous sets, unless W+1 already has a version.
   - Edits to the prescription apply from the current week on (new version); weeks already trained keep their targets.
@@ -379,6 +397,7 @@ All logged in decisions.md on 2026-11-10 ("Schema v1 approved").
 - **Step 7 (meal builder):** show the sum of the meal targets against the daily target, with the difference. Show "g / ml" for amounts.
 - **Step 8 (athlete week view):** day status done / incomplete / skipped (D6); warm-up shown before every session; a swap that lands on a unit food shows both ("≈ 1,5 huevos L (95 g)"); a "my training" switch so a trainer who is his own athlete can use the athlete screens.
 - **Step 10 (check-in):** the form picks the week by day — Fri–Sun → this week, Mon–Thu → last week — and the athlete can change it.
+- **Step 11 (trainer review):** the trainer can correct set logs, daily metrics and measurements inline (online only).
 - **Step 12 (offline):**
   - Session ids are UUID v5 of `(training_day_id, program_week)`; namespace constant in the repo.
   - The outbox sends only the fields that changed (daily metrics are filled through the day).
