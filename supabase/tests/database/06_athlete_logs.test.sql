@@ -18,7 +18,7 @@
 
 begin;
 
-select plan(82);
+select plan(89);
 
 -- ---------------------------------------------------------------------------
 -- Plans and other athletes' logs (as postgres; rolled back at the end)
@@ -54,6 +54,10 @@ values
    '00000000-0000-0000-0000-000000000102', 'Pierna', 2, 'training'),
   ('00000000-0000-0000-0000-000000000222', tests.user_id('t1'), tests.user_id('a1'),
    '00000000-0000-0000-0000-000000000102', 'Movilidad', 0, 'warmup'),
+  ('00000000-0000-0000-0000-000000000232', tests.user_id('t1'), tests.user_id('a1'),
+   '00000000-0000-0000-0000-000000000102', 'Brazo', 3, 'training'),
+  ('00000000-0000-0000-0000-000000000213', tests.user_id('t1'), tests.user_id('a2'),
+   '00000000-0000-0000-0000-000000000103', 'Pierna', 2, 'training'),
   ('00000000-0000-0000-0000-000000000203', tests.user_id('t1'), tests.user_id('a2'),
    '00000000-0000-0000-0000-000000000103', 'Torso', 1, 'training'),
   ('00000000-0000-0000-0000-000000000204', tests.user_id('t1'), tests.user_id('x'),
@@ -170,8 +174,10 @@ select lives_ok(
        ('00000000-0000-0000-0000-000000002102', tests.user_id('a1'),
         '00000000-0000-0000-0000-000000000202', 1, '2026-11-03'),
        ('00000000-0000-0000-0000-000000002112', tests.user_id('a1'),
-        '00000000-0000-0000-0000-000000000202', 2, '2026-11-10') $$,
-  'A1 can log sessions of his own training day in weeks 1 and 2'
+        '00000000-0000-0000-0000-000000000202', 2, '2026-11-10'),
+       ('00000000-0000-0000-0000-000000002122', tests.user_id('a1'),
+        '00000000-0000-0000-0000-000000000232', 1, '2026-11-05') $$,
+  'A1 can log sessions of his own training days: one day in weeks 1 and 2, another in week 1'
 );
 
 select lives_ok(
@@ -276,6 +282,7 @@ select set_eq(
      union all select id from public.weekly_checkins $$,
   array[
     '00000000-0000-0000-0000-000000002102'::uuid, '00000000-0000-0000-0000-000000002112'::uuid,
+    '00000000-0000-0000-0000-000000002122'::uuid,
     '00000000-0000-0000-0000-000000002202'::uuid, '00000000-0000-0000-0000-000000002212'::uuid,
     '00000000-0000-0000-0000-000000002222'::uuid, '00000000-0000-0000-0000-000000002232'::uuid,
     '00000000-0000-0000-0000-000000002302'::uuid, '00000000-0000-0000-0000-000000002402'::uuid,
@@ -540,6 +547,30 @@ select throws_ok(
   'A1 cannot move a set to his other session of the same day (ownership trigger)'
 );
 
+-- A session's id is a UUID v5 of (training_day_id, program_week) (D12): both
+-- are immutable. Session …2122 has no sets and the targets are free, so only
+-- the trigger stops these.
+select throws_ok(
+  $$ update public.training_sessions set program_week = 5
+     where id = '00000000-0000-0000-0000-000000002122' $$,
+  '23514', 'log_ownership_immutable',
+  'A1 cannot change the program week of his session (ownership trigger)'
+);
+
+select throws_ok(
+  $$ update public.training_sessions set training_day_id = '00000000-0000-0000-0000-000000000212'
+     where id = '00000000-0000-0000-0000-000000002122' $$,
+  '23514', 'log_ownership_immutable',
+  'A1 cannot move his session to another training day (ownership trigger)'
+);
+
+select isnt_empty(
+  $$ update public.training_sessions
+     set performed_on = '2026-11-04', completed_at = now(), notes = 'Bien'
+     where id = '00000000-0000-0000-0000-000000002102' returning id $$,
+  'A1 can still update the date, completion and notes of his session'
+);
+
 -- ---------------------------------------------------------------------------
 -- T1: reads his active athletes' logs, corrects three tables, writes nothing else
 -- ---------------------------------------------------------------------------
@@ -555,6 +586,7 @@ select set_eq(
      union all select id from public.weekly_checkins $$,
   array[
     '00000000-0000-0000-0000-000000002102'::uuid, '00000000-0000-0000-0000-000000002112'::uuid,
+    '00000000-0000-0000-0000-000000002122'::uuid,
     '00000000-0000-0000-0000-000000002202'::uuid, '00000000-0000-0000-0000-000000002212'::uuid,
     '00000000-0000-0000-0000-000000002222'::uuid, '00000000-0000-0000-0000-000000002232'::uuid,
     '00000000-0000-0000-0000-000000002302'::uuid, '00000000-0000-0000-0000-000000002402'::uuid,
@@ -647,6 +679,33 @@ select throws_ok(
      where id = '00000000-0000-0000-0000-000000002212' $$,
   '23514', 'log_ownership_immutable',
   'T1 cannot move A1''s set to another session (ownership trigger)'
+);
+
+-- A day's kind cannot change once it has sessions (D7). A2's mesocycle has no
+-- warm-up day, so only the trigger stops the first change.
+select throws_ok(
+  $$ update public.training_days set kind = 'warmup'
+     where id = '00000000-0000-0000-0000-000000000203' $$,
+  '23514', 'training_day_has_sessions',
+  'T1 cannot turn a training day that has sessions into a warm-up day'
+);
+
+select isnt_empty(
+  $$ update public.training_days set kind = 'warmup'
+     where id = '00000000-0000-0000-0000-000000000213' returning id $$,
+  'T1 can turn a training day without sessions into a warm-up day'
+);
+
+select isnt_empty(
+  $$ update public.training_days set kind = 'warmup'
+     where id = '00000000-0000-0000-0000-000000000201' returning id $$,
+  'T1 can change the kind of a template day'
+);
+
+select isnt_empty(
+  $$ update public.training_days set name = 'Torso A'
+     where id = '00000000-0000-0000-0000-000000000202' returning id $$,
+  'T1 can rename a training day that has sessions'
 );
 
 select throws_ok(

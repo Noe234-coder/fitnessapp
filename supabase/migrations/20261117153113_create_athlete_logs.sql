@@ -1,7 +1,8 @@
 -- Group 6 (docs/schema-v1.md §7, step 2b-2b): the athlete log tables —
 -- training_sessions → set_logs, meal_logs, daily_metrics, body_measurements,
--- weekly_checkins — with RLS, policies and grants, the warm-up session
--- trigger (D7) and the ownership trigger (§4 "Log integrity rules").
+-- weekly_checkins — with RLS, policies and grants, the warm-up triggers
+-- (D7: no session on a warmup day, no kind change on a day with sessions) and
+-- the ownership trigger (§4 "Log integrity rules").
 --
 -- Every log row carries athlete_id (→ profiles, on delete cascade) and a
 -- natural unique key (D12), which is what the offline outbox upserts on.
@@ -63,21 +64,28 @@ comment on function private.reject_log_ownership_change() is
 revoke all on function private.reject_log_ownership_change() from public, anon, authenticated;
 
 -- A warm-up day is never logged (D7). A foreign key cannot check a column's
--- value, so this trigger does. Security definer: the rule must hold whoever
--- writes, whatever he can read of training_days.
+-- value, so this trigger does; private.reject_logged_day_kind_change() (after
+-- training_sessions) keeps the rule from the other side. Security definer:
+-- the rule must hold whoever writes, whatever he can read of training_days.
 create function private.reject_warmup_session()
 returns trigger
 language plpgsql
 security definer
 set search_path = ''
 as $$
+declare
+  day_kind text;
 begin
-  if exists (
-    select 1
-    from public.training_days d
-    where d.id = new.training_day_id
-      and d.kind = 'warmup'
-  ) then
+  -- "for share" makes a concurrent kind change of the day wait for this
+  -- transaction, so the two triggers cannot miss each other. A day that does
+  -- not exist is left to the foreign key.
+  select d.kind
+  into day_kind
+  from public.training_days d
+  where d.id = new.training_day_id
+  for share;
+
+  if day_kind = 'warmup' then
     raise exception 'warmup_day_not_loggable' using errcode = 'check_violation';
   end if;
 
@@ -127,9 +135,9 @@ comment on column public.training_sessions.id is
 comment on column public.training_sessions.athlete_id is
   'The athlete who trained. Part of the composite FK to the training day.';
 comment on column public.training_sessions.training_day_id is
-  'The training day of the athlete''s own mesocycle. Never a warmup day (trigger).';
+  'The training day of the athlete''s own mesocycle. Never a warmup day (trigger). Cannot change (trigger): the id is derived from it.';
 comment on column public.training_sessions.program_week is
-  'Program week (1 or more) the session belongs to, set by the phone when the session is created. One session per day and week.';
+  'Program week (1 or more) the session belongs to, set by the phone when the session is created. One session per day and week. Cannot change (trigger): the id is derived from it.';
 comment on column public.training_sessions.performed_on is 'Calendar date of the workout.';
 comment on column public.training_sessions.completed_at is
   'When the athlete finished the session. Null while it is in progress (status incomplete if it has sets).';
@@ -152,10 +160,16 @@ create trigger reject_warmup_session
   before insert or update of training_day_id on public.training_sessions
   for each row execute function private.reject_warmup_session();
 
+-- training_day_id and program_week are immutable too: the session id is a
+-- UUID v5 of them (D12), so a second device must find the same row.
 create trigger reject_ownership_change
   before update on public.training_sessions
   for each row
-  when (old.athlete_id is distinct from new.athlete_id)
+  when (
+    old.athlete_id is distinct from new.athlete_id
+    or old.training_day_id is distinct from new.training_day_id
+    or old.program_week is distinct from new.program_week
+  )
   execute function private.reject_log_ownership_change();
 
 revoke all on table public.training_sessions from anon, authenticated;
@@ -181,6 +195,49 @@ create policy "athletes delete own training sessions while linked"
 create policy "trainers read their active athletes' training sessions"
   on public.training_sessions for select to authenticated
   using (athlete_id in (select private.trainer_athlete_ids()));
+
+-- ===========================================================================
+-- training_days: no kind change once the day has sessions (D7)
+--
+-- The other side of private.reject_warmup_session(): turning a logged day
+-- into a warmup day would leave logs on a day that is never logged, and
+-- break the derived day status. Renaming or reordering the day stays free.
+--
+-- Security definer: the trainer cannot read every session through RLS (not a
+-- former athlete's), and they still count. The row being updated is locked
+-- before this runs, so a concurrent session insert waits in the warm-up
+-- trigger ("for share") and then sees the new kind.
+-- ===========================================================================
+
+create function private.reject_logged_day_kind_change()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if exists (
+    select 1
+    from public.training_sessions s
+    where s.training_day_id = old.id
+  ) then
+    raise exception 'training_day_has_sessions' using errcode = 'check_violation';
+  end if;
+
+  return new;
+end;
+$$;
+
+comment on function private.reject_logged_day_kind_change() is
+  'Trigger function on training_days: rejects changing kind while a training session references the day (message training_day_has_sessions, D7).';
+
+revoke all on function private.reject_logged_day_kind_change() from public, anon, authenticated;
+
+create trigger reject_logged_kind_change
+  before update of kind on public.training_days
+  for each row
+  when (old.kind is distinct from new.kind)
+  execute function private.reject_logged_day_kind_change();
 
 -- ===========================================================================
 -- set_logs
