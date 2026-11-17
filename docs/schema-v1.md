@@ -2,7 +2,7 @@
 
 > **APPROVED 2026-11-10.** Not applied anywhere yet. Written 2026-11-09 (roadmap step 2a), reviewed with Noé on 2026-11-10 (D1–D12 and §5–6, one choice at a time).
 > **Revised 2026-11-16** with the trainer's answers: technique codes (partials became a technique), full check-in options, trainer corrections of logs, women's hip measurement.
-> **Revised 2026-11-17:** log integrity rules (`set_logs.training_day_id`, `on delete no action` from logs to plans, immutable ownership columns) and two view rules ("today" is `current_date`; when the body-fat estimate is null).
+> **Revised 2026-11-17:** log integrity rules (`set_logs.training_day_id`, `on delete no action` from logs to plans, immutable ownership columns and session keys, no kind change on a logged day) and two view rules ("today" is `current_date`; when the body-fat estimate is null).
 > This document is the reference for the migrations of step 2b. Inputs: decisions.md, trainer-workflow.md, reference-oct28-schema.md.
 > Open items that don't block the migrations are in §9; notes for later steps are in §11.
 
@@ -282,6 +282,8 @@ Log integrity rules (decided 2026-11-17):
 - **FKs from logs to plan rows are `on delete no action`**, not cascade and not restrict. A trainer can't delete a training day, day exercise or meal that has logs. Deleting an athlete still works: no action is checked at the end of the statement, and the cascade from his profile removes his plans and logs together (restrict is checked at once and would break it). Exception: `meal_logs.meal_option_id` is `on delete set null (meal_option_id)`.
 - **`meal_logs.meal_option_id` must be an option of that meal:** composite FK `(meal_option_id, meal_id)` → meal_options `(id, meal_id)`.
 - **Ownership columns are immutable on update:** a trigger rejects changing `athlete_id` on every log table, and `training_session_id`, `training_day_id` and `day_exercise_id` on `set_logs`.
+- **A session's `training_day_id` and `program_week` are immutable too** (same trigger): the session id is a UUID v5 of them (D12), so a second device must find the same row instead of hitting a primary-key error.
+- **A training day's `kind` can't change once the day has sessions** (trigger on `training_days`): a logged day turned into a warm-up day would carry logs although warm-ups are never logged (D7), and its derived day status would break.
 
 ### Views
 
@@ -292,7 +294,7 @@ All views use `security_invoker = true`, so the caller's RLS applies.
 - **body_fat_estimates** — body-fat % per measurement (Navy, inch version, D11).
 - Day status (done / incomplete / skipped, D6) — a view or a query, decided in step 8.
 
-- **"Today" is `current_date`** (UTC on the database). Around midnight in Spain the current target may switch 1–2 h late; accepted (decided 2026-11-17).
+- **"Today" is `current_date`**, which is UTC on Supabase: in Spain the day changes at 01:00 or 02:00 local time, so the current target may switch 1–2 h late; accepted (decided 2026-11-17). Log dates (`performed_on`, `logged_on`, `recorded_on`, `measured_on`) always come from the device's local date, never from the database.
 - **body_fat_estimates returns null** when an input is missing (`sex`, `height_cm`, `neck_cm`, `navel_cm`, and `hip_cm` for women) or when a log argument is ≤ 0.
 
 ## 5. RLS strategy

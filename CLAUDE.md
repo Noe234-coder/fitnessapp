@@ -29,7 +29,7 @@ Database (local stack):
 - `npm run db:status` — local URLs and keys.
 - `npm run db:reset` — rebuild the local DB from `supabase/migrations/` + `supabase/seed.sql`.
 - `npm run db:test` — run the pgTAP tests in `supabase/tests/database/` against the local stack. Run `db:reset` first: the fixtures are persistent rows from `seed.sql`. Don't call `npx supabase test db` directly: without `--network-id fitnessapp-local` it can't find the local stack.
-- `npx supabase migration new <name>` — create an empty migration file.
+- `npx supabase migration new <name> </dev/null` — create an empty migration file. Without `</dev/null` it waits on stdin when stdin isn't a terminal (it reads the migration's SQL from a pipe).
 - `node scripts/test-invite-function.mjs` — check the `invite-athlete` Edge Function end to end against the local stack (after `db:reset`). Needs `supabase/functions/.env`: copy `supabase/functions/.env.example`, then restart the stack. A change to the function's code is served only after the edge runtime restarts (`docker restart supabase_edge_runtime_fitnessapp`, or `db:stop` and `db:start`); after a reboot that container may be stopped while the rest of the stack is up. Not run in CI (CI starts Postgres only).
 
 - `npm run db:types` — regenerate `src/lib/database.types.ts` from the local database (`public` schema only). Run it after `db:reset` whenever a migration changes, and commit the result. No `--network-id` here: v3 generates types in-process and rejects the flag.
