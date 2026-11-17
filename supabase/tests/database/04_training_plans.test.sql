@@ -18,7 +18,7 @@
 
 begin;
 
-select plan(99);
+select plan(103);
 
 -- ---------------------------------------------------------------------------
 -- Rows T1 does not create himself (as postgres; rolled back at the end)
@@ -336,16 +336,89 @@ select throws_ok(
   'T1 cannot add a day to X''s old mesocycle'
 );
 
-select is_empty(
-  $$ update public.mesocycles set name = 'Hacked'
-     where athlete_id in (tests.user_id('x'), tests.user_id('b1')) returning id $$,
-  'T1 cannot update X''s or B1''s mesocycles (no row is updated)'
+select throws_ok(
+  $$ insert into public.day_exercises (trainer_id, athlete_id, training_day_id, exercise_id)
+     values (tests.user_id('t1'), tests.user_id('x'),
+             '00000000-0000-0000-0000-000000000204', '00000000-0000-0000-0000-0000000000e1') $$,
+  '42501', 'new row violates row-level security policy for table "day_exercises"',
+  'T1 cannot add an exercise to X''s old day'
+);
+
+select throws_ok(
+  $$ insert into public.exercise_prescriptions (trainer_id, athlete_id, day_exercise_id, from_week)
+     values (tests.user_id('t1'), tests.user_id('x'),
+             '00000000-0000-0000-0000-000000000304', 2) $$,
+  '42501', 'new row violates row-level security policy for table "exercise_prescriptions"',
+  'T1 cannot add a prescription to X''s old exercise'
+);
+
+select throws_ok(
+  $$ insert into public.prescribed_sets (
+       trainer_id, athlete_id, exercise_prescription_id, set_number, target_reps_min, target_reps_max
+     )
+     values (tests.user_id('t1'), tests.user_id('x'),
+             '00000000-0000-0000-0000-000000000404', 2, 8, 10) $$,
+  '42501', 'new row violates row-level security policy for table "prescribed_sets"',
+  'T1 cannot add a set to X''s old prescription'
+);
+
+select throws_ok(
+  $$ update public.mesocycles set athlete_id = tests.user_id('x')
+     where id = '00000000-0000-0000-0000-000000000105' $$,
+  '42501', 'new row violates row-level security policy for table "mesocycles"',
+  'T1 cannot hand one of his mesocycles over to X'
 );
 
 select is_empty(
-  $$ delete from public.mesocycles
-     where athlete_id in (tests.user_id('x'), tests.user_id('b1')) returning id $$,
-  'T1 cannot delete X''s or B1''s mesocycles (no row is deleted)'
+  $$ with m as (
+       update public.mesocycles set name = 'Hacked'
+       where athlete_id in (tests.user_id('x'), tests.user_id('b1')) returning id
+     ),
+     d as (
+       update public.training_days set name = 'Hacked'
+       where athlete_id in (tests.user_id('x'), tests.user_id('b1')) returning id
+     ),
+     e as (
+       update public.day_exercises set notes = 'Hacked'
+       where athlete_id in (tests.user_id('x'), tests.user_id('b1')) returning id
+     ),
+     p as (
+       update public.exercise_prescriptions set from_week = 9
+       where athlete_id in (tests.user_id('x'), tests.user_id('b1')) returning id
+     ),
+     s as (
+       update public.prescribed_sets set notes = 'Hacked'
+       where athlete_id in (tests.user_id('x'), tests.user_id('b1')) returning id
+     )
+     select id from m union all select id from d union all select id from e
+     union all select id from p union all select id from s $$,
+  'T1 cannot update any row of X''s or B1''s plans (no row is updated)'
+);
+
+select is_empty(
+  $$ with s as (
+       delete from public.prescribed_sets
+       where athlete_id in (tests.user_id('x'), tests.user_id('b1')) returning id
+     ),
+     p as (
+       delete from public.exercise_prescriptions
+       where athlete_id in (tests.user_id('x'), tests.user_id('b1')) returning id
+     ),
+     e as (
+       delete from public.day_exercises
+       where athlete_id in (tests.user_id('x'), tests.user_id('b1')) returning id
+     ),
+     d as (
+       delete from public.training_days
+       where athlete_id in (tests.user_id('x'), tests.user_id('b1')) returning id
+     ),
+     m as (
+       delete from public.mesocycles
+       where athlete_id in (tests.user_id('x'), tests.user_id('b1')) returning id
+     )
+     select id from m union all select id from d union all select id from e
+     union all select id from p union all select id from s $$,
+  'T1 cannot delete any row of X''s or B1''s plans (no row is deleted)'
 );
 
 select is_empty(

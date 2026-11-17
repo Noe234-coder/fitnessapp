@@ -17,7 +17,7 @@
 
 begin;
 
-select plan(82);
+select plan(86);
 
 -- ---------------------------------------------------------------------------
 -- Rows T1 does not create himself (as postgres; rolled back at the end)
@@ -247,21 +247,76 @@ select throws_ok(
   'T1 cannot set a macro target for B1'
 );
 
+select throws_ok(
+  $$ insert into public.meal_options (trainer_id, athlete_id, meal_id)
+     values (tests.user_id('t1'), tests.user_id('x'), '00000000-0000-0000-0000-000000001204') $$,
+  '42501', 'new row violates row-level security policy for table "meal_options"',
+  'T1 cannot add an option to X''s old meal'
+);
+
+select throws_ok(
+  $$ insert into public.meal_option_items (trainer_id, athlete_id, meal_option_id, food_id, amount)
+     values (tests.user_id('t1'), tests.user_id('x'),
+             '00000000-0000-0000-0000-000000001304', '00000000-0000-0000-0000-0000000000f3', 50) $$,
+  '42501', 'new row violates row-level security policy for table "meal_option_items"',
+  'T1 cannot add an item to X''s old option'
+);
+
+select throws_ok(
+  $$ update public.meal_plans set athlete_id = tests.user_id('x')
+     where id = '00000000-0000-0000-0000-000000001105' $$,
+  '42501', 'new row violates row-level security policy for table "meal_plans"',
+  'T1 cannot hand one of his meal plans over to X'
+);
+
+-- macro_targets has no parent row: only the policy stops this.
+select throws_ok(
+  $$ update public.macro_targets set athlete_id = tests.user_id('x')
+     where id = '00000000-0000-0000-0000-000000001502' $$,
+  '42501', 'new row violates row-level security policy for table "macro_targets"',
+  'T1 cannot move one of A1''s macro targets to X'
+);
+
 select is_empty(
   $$ with p as (
        update public.meal_plans set name = 'Hacked'
+       where athlete_id in (tests.user_id('x'), tests.user_id('b1')) returning id
+     ),
+     m as (
+       update public.meals set name = 'Hacked'
+       where athlete_id in (tests.user_id('x'), tests.user_id('b1')) returning id
+     ),
+     o as (
+       update public.meal_options set label = 'Hacked'
+       where athlete_id in (tests.user_id('x'), tests.user_id('b1')) returning id
+     ),
+     i as (
+       update public.meal_option_items set amount = 999
        where athlete_id in (tests.user_id('x'), tests.user_id('b1')) returning id
      ),
      t as (
        update public.macro_targets set note = 'Hacked'
        where athlete_id in (tests.user_id('x'), tests.user_id('b1')) returning id
      )
-     select id from p union all select id from t $$,
-  'T1 cannot update X''s or B1''s meal plans or macro targets (no row is updated)'
+     select id from p union all select id from m union all select id from o
+     union all select id from i union all select id from t $$,
+  'T1 cannot update any row of X''s or B1''s nutrition (no row is updated)'
 );
 
 select is_empty(
-  $$ with p as (
+  $$ with i as (
+       delete from public.meal_option_items
+       where athlete_id in (tests.user_id('x'), tests.user_id('b1')) returning id
+     ),
+     o as (
+       delete from public.meal_options
+       where athlete_id in (tests.user_id('x'), tests.user_id('b1')) returning id
+     ),
+     m as (
+       delete from public.meals
+       where athlete_id in (tests.user_id('x'), tests.user_id('b1')) returning id
+     ),
+     p as (
        delete from public.meal_plans
        where athlete_id in (tests.user_id('x'), tests.user_id('b1')) returning id
      ),
@@ -269,8 +324,9 @@ select is_empty(
        delete from public.macro_targets
        where athlete_id in (tests.user_id('x'), tests.user_id('b1')) returning id
      )
-     select id from p union all select id from t $$,
-  'T1 cannot delete X''s or B1''s meal plans or macro targets (no row is deleted)'
+     select id from p union all select id from m union all select id from o
+     union all select id from i union all select id from t $$,
+  'T1 cannot delete any row of X''s or B1''s nutrition (no row is deleted)'
 );
 
 select throws_ok(
