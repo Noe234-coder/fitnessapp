@@ -2,6 +2,7 @@
 
 > **APPROVED 2026-11-10.** Not applied anywhere yet. Written 2026-11-09 (roadmap step 2a), reviewed with Noé on 2026-11-10 (D1–D12 and §5–6, one choice at a time).
 > **Revised 2026-11-16** with the trainer's answers: technique codes (partials became a technique), full check-in options, trainer corrections of logs, women's hip measurement.
+> **Revised 2026-11-17:** log integrity rules (`set_logs.training_day_id`, `on delete no action` from logs to plans, immutable ownership columns) and two view rules ("today" is `current_date`; when the body-fat estimate is null).
 > This document is the reference for the migrations of step 2b. Inputs: decisions.md, trainer-workflow.md, reference-oct28-schema.md.
 > Open items that don't block the migrations are in §9; notes for later steps are in §11.
 
@@ -248,7 +249,8 @@ Every table has `athlete_id`. Logs point into plans with `(x_id, athlete_id)`, s
 
 **training_sessions** — `training_day_id` ↑ · `program_week` (≥ 1) · `performed_on` · `completed_at` (null = in progress) · `notes`. Unique (training_day_id, program_week). Id = UUID v5 (D12). Trigger: rejects warm-up days (D7).
 
-**set_logs** — `training_session_id` ↑ · `day_exercise_id` ↑ · `set_number` · `reps` · `weight_kg`. One row per set, which is what the later volume and progress features need.
+**set_logs** — `training_session_id` ↑ · `day_exercise_id` ↑ · `training_day_id` (copied down, D3) · `set_number` · `reps` · `weight_kg`. One row per set, which is what the later volume and progress features need.
+`training_day_id` has two composite FKs: `(training_session_id, training_day_id)` → training_sessions `(id, training_day_id)` and `(day_exercise_id, training_day_id)` → day_exercises `(id, training_day_id)`. Together they stop a set from belonging to an exercise of another day than its session's.
 
 **meal_logs** — a ticked meal.
 `meal_id` ↑ · `logged_on` · `meal_option_id` (null = not specified). Unticking deletes the row.
@@ -276,6 +278,11 @@ Answer codes: the complete lists (confirmed 2026-11-16). Every answer is nullabl
 
 Satiety is not a "higher is better" scale: 1 and 5 are both warnings.
 
+Log integrity rules (decided 2026-11-17):
+- **FKs from logs to plan rows are `on delete no action`**, not cascade and not restrict. A trainer can't delete a training day, day exercise or meal that has logs. Deleting an athlete still works: no action is checked at the end of the statement, and the cascade from his profile removes his plans and logs together (restrict is checked at once and would break it). Exception: `meal_logs.meal_option_id` is `on delete set null (meal_option_id)`.
+- **`meal_logs.meal_option_id` must be an option of that meal:** composite FK `(meal_option_id, meal_id)` → meal_options `(id, meal_id)`.
+- **Ownership columns are immutable on update:** a trigger rejects changing `athlete_id` on every log table, and `training_session_id`, `training_day_id` and `day_exercise_id` on `set_logs`.
+
 ### Views
 
 All views use `security_invoker = true`, so the caller's RLS applies.
@@ -284,6 +291,9 @@ All views use `security_invoker = true`, so the caller's RLS applies.
 - **daily_metrics_weekly** — weekly averages and change vs the previous week (his SEGUIMIENTO DIARIO).
 - **body_fat_estimates** — body-fat % per measurement (Navy, inch version, D11).
 - Day status (done / incomplete / skipped, D6) — a view or a query, decided in step 8.
+
+- **"Today" is `current_date`** (UTC on the database). Around midnight in Spain the current target may switch 1–2 h late; accepted (decided 2026-11-17).
+- **body_fat_estimates returns null** when an input is missing (`sex`, `height_cm`, `neck_cm`, `navel_cm`, and `hip_cm` for women) or when a log argument is ≤ 0.
 
 ## 5. RLS strategy
 
