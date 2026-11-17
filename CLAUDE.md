@@ -48,7 +48,7 @@ App (Node 22, see `.nvmrc`):
 ## Project structure
 - `docs/schema-v1.md` — the approved schema: tables, conventions, design choices (D1–D12), RLS strategy, tests. **Read it before touching the database.**
 - `supabase/migrations/` — versioned migrations, one per group (see schema-v1.md §7).
-- `supabase/tests/database/` — pgTAP tests (`*.test.sql`): `00_meta`, `01_identity`, `02_libraries`, `03_invitations`, `04_training_plans`, `05_nutrition_plans`, `06_athlete_logs`, …
+- `supabase/tests/database/` — pgTAP tests (`*.test.sql`): `00_meta`, `01_identity`, `02_libraries`, `03_invitations`, `04_training_plans`, `05_nutrition_plans`, `06_athlete_logs`, `07_views`, …
 - `supabase/functions/invite-athlete/` — the invite Edge Function (`index.ts`, `cors.ts`, `secret-key.ts`). Deno, not part of the app build or `tsc`. `supabase/functions/.env` (gitignored) holds `APP_BASE_URL` and no key: the runtime, local and hosted, gives the function `SUPABASE_URL` and `SUPABASE_SECRET_KEYS` (a JSON object; the function uses the key named `default`, with no fallback to the legacy `service_role` key).
 - `scripts/test-invite-function.mjs` — local end-to-end checks for that function, with the local secret and publishable keys from `supabase status`.
 - `supabase/seed.sql` — local-only: the `tests` helper schema (`tests.create_user`, `tests.user_id('t1')`, `tests.authenticate_as`) and the fixtures T1, A1, A2, T2, B1, X, U (`<name>@fitnessapp.test`). Never pushed to the hosted project.

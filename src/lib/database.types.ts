@@ -337,6 +337,12 @@ isOneToOne: false
       foreignKeyName: "meal_option_items_meal_option_id_athlete_id_trainer_id_fkey"
       columns: ["meal_option_id","athlete_id","trainer_id"]
 isOneToOne: false
+      referencedRelation: "meal_option_macros"
+      referencedColumns: ["meal_option_id","athlete_id","trainer_id"]
+    },{
+      foreignKeyName: "meal_option_items_meal_option_id_athlete_id_trainer_id_fkey"
+      columns: ["meal_option_id","athlete_id","trainer_id"]
+isOneToOne: false
       referencedRelation: "meal_options"
       referencedColumns: ["id","athlete_id","trainer_id"]
     },{
@@ -724,7 +730,75 @@ isOneToOne: false
                 }
           }
           Views: {
-            [_ in never]: never
+            "body_fat_estimates": {
+                  Row: {
+                    "athlete_id": string,"body_fat_pct": number | null,"body_measurement_id": string,"measured_on": string
+                  }
+                  ComputedFields: never
+                  Relationships: [
+                    {
+      foreignKeyName: "body_measurements_athlete_id_fkey"
+      columns: ["athlete_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"daily_metrics_weekly": {
+                  Row: {
+                    "athlete_id": string,"avg_sleep_minutes": number | null,"avg_steps": number | null,"avg_stress": number | null,"avg_weight_kg": number | null,"week_starts_on": string | null,"weight_change_kg": number | null,"weight_days": number | null
+                  }
+                  ComputedFields: never
+                  Relationships: [
+                    {
+      foreignKeyName: "daily_metrics_athlete_id_fkey"
+      columns: ["athlete_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"macro_targets_current": {
+                  Row: {
+                    "athlete_id": string,"avg_weight_kg": number | null,"carbs_g": number,"carbs_g_per_kg": number | null,"day_type": string,"effective_on": string,"fat_g": number,"fat_g_per_kg": number | null,"kcal": number | null,"macro_target_id": string,"note": string | null,"protein_g": number,"protein_g_per_kg": number | null,"trainer_id": string
+                  }
+                  ComputedFields: never
+                  Relationships: [
+                    {
+      foreignKeyName: "macro_targets_athlete_id_fkey"
+      columns: ["athlete_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "macro_targets_trainer_id_fkey"
+      columns: ["trainer_id"]
+isOneToOne: false
+      referencedRelation: "trainers"
+      referencedColumns: ["profile_id"]
+    }
+                  ]
+                },"meal_option_macros": {
+                  Row: {
+                    "athlete_id": string,"carbs_g": number | null,"fat_g": number | null,"kcal": number | null,"meal_option_id": string,"protein_g": number | null,"trainer_id": string
+                  }
+                  ComputedFields: never
+                  Relationships: [
+                    {
+      foreignKeyName: "meal_options_athlete_id_fkey"
+      columns: ["athlete_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "meal_options_trainer_id_fkey"
+      columns: ["trainer_id"]
+isOneToOne: false
+      referencedRelation: "trainers"
+      referencedColumns: ["profile_id"]
+    }
+                  ]
+                }
           }
           Functions: {
             "accept_invitation":
