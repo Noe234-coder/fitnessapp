@@ -94,11 +94,11 @@ The app is invite-only: public sign-up is off (`[auth] enable_signup = false`) a
 - Tests: `supabase/tests/database/03_invitations.test.sql` (pgTAP) and `scripts/test-invite-function.mjs` (the function, local only).
 
 ## Hosted project
-State on 2026-11-13, at the end of step 4b-2. Project `fitnessapp`, ref `cfxafmgjuyigayywntjn`, eu-west-3. Production origin: `https://fitnessapp.myfitnessapp.workers.dev`.
+State on 2026-11-17, at the end of step 2b-2a. Project `fitnessapp`, ref `cfxafmgjuyigayywntjn`, eu-west-3. Production origin: `https://fitnessapp.myfitnessapp.workers.dev`.
 
 What is on it:
 - **Config** (`config push`): public sign-up off, `otp_expiry` 86400 (invite links last 24 h), minimum password length 8, `site_url` = the production origin, redirect URLs = the two local dev origins. `supabase/config.toml` mirrors the hosted values: `npx supabase config diff --remote` (read-only) must report no changes. It also lists 12 properties the push does not manage and 2 masked credentials; of those, `auth.rate_limit.email_sent` has never been compared with the hosted value.
-- **Database** (`db push`): the four migrations in `supabase/migrations/`. The seed and the `tests` schema are not there.
+- **Database** (`db push`): the six migrations in `supabase/migrations/`; the last two (training plans, nutrition plans) were pushed on 2026-11-17, and their 10 tables are empty. The seed and the `tests` schema are not there.
 - **Edge Function:** `invite-athlete`, `verify_jwt` false, with one secret, `APP_BASE_URL` = the production origin. It is deployed by hand (`functions deploy`, from the branch that holds the code), not by CI.
 - **API keys:** the app uses the publishable key `default` and the function the secret key `default`. The legacy `anon` and `service_role` keys were disabled on 2026-11-13 (step 4c) in Settings → API Keys; Supabase's migration guide says they can be re-activated there. Nothing in the repo uses them. The JWT signing keys were not changed: moving to asymmetric keys is a separate migration, and the legacy JWT secret can only be revoked while the legacy keys are disabled.
 - **Users:** one, the first trainer, with his `trainers` row and an active self-link in `trainer_athletes`. There is no UI to create a trainer: the auth user is created in the dashboard (Authentication → Users → Add user, auto-confirm), then one SQL transaction inserts the `trainers` row and the self-link. His email and id are not in the repo.
@@ -106,7 +106,7 @@ What is on it:
 Working with it:
 - Hosted writes are run by Noé, in his own terminal (the CLI's confirmation is interactive) or in the dashboard SQL editor, one at a time, after the exact command and its effect have been shown. Each one is verified read-only afterwards.
 - `secrets`, `functions` and `projects api-keys` act on the linked project without `--remote`. `secrets list` shows the SHA-256 digest of each value, not the value. `projects api-keys` prints key values: filter its output, never show them.
-- Reads: `npx supabase db query --remote --read-only "<select>"` needs no confirmation. It accepts only `SELECT`, `WITH`, `VALUES`, `TABLE`, `SHOW` and `EXPLAIN`; pass longer SQL with `--file` (SQL that starts with a `--` comment is taken for a flag). It runs as a role that cannot `set role`, so "what does this user see through RLS" cannot be checked from the CLI: that query is run in the dashboard SQL editor.
+- Reads: `npx supabase db query --remote --read-only "<select>"` needs no confirmation. It accepts only `SELECT`, `WITH`, `VALUES`, `TABLE`, `SHOW` and `EXPLAIN`; pass longer SQL with `--file` (SQL that starts with a `--` comment is taken for a flag). It runs as a role that cannot `set role`, so "what does this user see through RLS" cannot be checked from the CLI: that query is run in the dashboard SQL editor. For the same reason `information_schema.role_table_grants` returns no rows for `anon` or `authenticated`: read table grants with `aclexplode(pg_class.relacl)` and function grants with `has_function_privilege`.
 - Logs, read-only: `npx supabase logs --remote --service <functions|function-edge|edge|auth> --since <UTC timestamp> --output-format json`. `function-edge` has one line per function request (method and status), `functions` the function's own console output. They lag by up to a minute. Print the method, path and status only: the records can hold more.
 - Never select a real user's email into the output of a check: compare it or count it instead.
 
@@ -116,8 +116,10 @@ Verified on 2026-11-13:
 - **RLS as each user:** the rows a linked athlete and his trainer see in `profiles`, `trainers`, `invitations` and `trainer_athletes` match `docs/schema-v1.md` §5.
 - **The secret key (step 4c):** with the function reading `SUPABASE_SECRET_KEYS`, one invite created from the production app succeeded (the test user and its pending invitation were deleted afterwards: a pending invitation is not removed by the user's cascade). With the legacy keys disabled, the API answers 401 "Legacy API keys are disabled" to the legacy `anon` key, the publishable key works, and the function still answers 401 without a user JWT and 405 on other methods.
 
+Verified on 2026-11-17, read-only, after the 2b-2a push: on the 10 new tables RLS is on and policies, grants, triggers and the two `private` trigger functions' grants match the local database; `anon` has no privilege on them; the `food_swaps` index exists; identity row counts were unchanged.
+
 Open:
-- Advisors after the `db push`. Security: no ERROR, two expected WARN (`authenticated_security_definer_function_executable` on `accept_invitation()` and `auth_otp_long_expiry`, both deliberate). Performance: WARN `multiple_permissive_policies` on 8 tables for `authenticated` SELECT, INFO `unindexed_foreign_keys` for `food_swaps_from_food_id_trainer_id_fkey`. Nothing was changed: a fix is a new migration, and Noé decides.
+- Advisors: re-run after the 2026-11-17 push, see decisions. Before it (2026-11-13), security: no ERROR, two expected WARN (`authenticated_security_definer_function_executable` on `accept_invitation()` and `auth_otp_long_expiry`, both deliberate); performance: WARN `multiple_permissive_policies` on 8 tables for `authenticated` SELECT, INFO `unindexed_foreign_keys` for `food_swaps_from_food_id_trainer_id_fkey` (the 2b-2a migration adds that index). A fix is a new migration, and Noé decides.
 
 ## Rules for working in this repo
 
