@@ -25,6 +25,46 @@ isOneToOne: true
       referencedColumns: ["id"]
     }
                   ]
+                },"body_measurements": {
+                  Row: {
+                    "athlete_id": string,"biceps_left_cm": number | null,"biceps_right_cm": number | null,"calf_left_cm": number | null,"calf_right_cm": number | null,"chest_cm": number | null,"created_at": string,"glute_cm": number | null,"hip_cm": number | null,"id": string,"measured_on": string,"navel_cm": number | null,"neck_cm": number | null,"quad_left_cm": number | null,"quad_right_cm": number | null,"updated_at": string,"upper_abdomen_cm": number | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "athlete_id": string,"biceps_left_cm"?: number | null,"biceps_right_cm"?: number | null,"calf_left_cm"?: number | null,"calf_right_cm"?: number | null,"chest_cm"?: number | null,"created_at"?: string,"glute_cm"?: number | null,"hip_cm"?: number | null,"id"?: string,"measured_on": string,"navel_cm"?: number | null,"neck_cm"?: number | null,"quad_left_cm"?: number | null,"quad_right_cm"?: number | null,"updated_at"?: string,"upper_abdomen_cm"?: number | null
+                  }
+                  Update: {
+                    "athlete_id"?: string,"biceps_left_cm"?: number | null,"biceps_right_cm"?: number | null,"calf_left_cm"?: number | null,"calf_right_cm"?: number | null,"chest_cm"?: number | null,"created_at"?: string,"glute_cm"?: number | null,"hip_cm"?: number | null,"id"?: string,"measured_on"?: string,"navel_cm"?: number | null,"neck_cm"?: number | null,"quad_left_cm"?: number | null,"quad_right_cm"?: number | null,"updated_at"?: string,"upper_abdomen_cm"?: number | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "body_measurements_athlete_id_fkey"
+      columns: ["athlete_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"daily_metrics": {
+                  Row: {
+                    "athlete_id": string,"created_at": string,"fasted_weight_kg": number | null,"id": string,"recorded_on": string,"sleep_minutes": number | null,"steps": number | null,"stress": number | null,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "athlete_id": string,"created_at"?: string,"fasted_weight_kg"?: number | null,"id"?: string,"recorded_on": string,"sleep_minutes"?: number | null,"steps"?: number | null,"stress"?: number | null,"updated_at"?: string
+                  }
+                  Update: {
+                    "athlete_id"?: string,"created_at"?: string,"fasted_weight_kg"?: number | null,"id"?: string,"recorded_on"?: string,"sleep_minutes"?: number | null,"steps"?: number | null,"stress"?: number | null,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "daily_metrics_athlete_id_fkey"
+      columns: ["athlete_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"day_exercises": {
                   Row: {
                     "athlete_id": string | null,"created_at": string,"exercise_id": string,"id": string,"is_template": boolean,"notes": string | null,"position": number,"trainer_id": string,"training_day_id": string,"updated_at": string
@@ -235,6 +275,38 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "trainers"
       referencedColumns: ["profile_id"]
+    }
+                  ]
+                },"meal_logs": {
+                  Row: {
+                    "athlete_id": string,"created_at": string,"id": string,"logged_on": string,"meal_id": string,"meal_option_id": string | null,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "athlete_id": string,"created_at"?: string,"id"?: string,"logged_on": string,"meal_id": string,"meal_option_id"?: string | null,"updated_at"?: string
+                  }
+                  Update: {
+                    "athlete_id"?: string,"created_at"?: string,"id"?: string,"logged_on"?: string,"meal_id"?: string,"meal_option_id"?: string | null,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "meal_logs_athlete_id_fkey"
+      columns: ["athlete_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "meal_logs_meal_id_athlete_id_fkey"
+      columns: ["meal_id","athlete_id"]
+isOneToOne: false
+      referencedRelation: "meals"
+      referencedColumns: ["id","athlete_id"]
+    },{
+      foreignKeyName: "meal_logs_meal_option_id_meal_id_fkey"
+      columns: ["meal_option_id","meal_id"]
+isOneToOne: false
+      referencedRelation: "meal_options"
+      referencedColumns: ["id","meal_id"]
     }
                   ]
                 },"meal_option_items": {
@@ -475,6 +547,50 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"set_logs": {
+                  Row: {
+                    "athlete_id": string,"created_at": string,"day_exercise_id": string,"id": string,"reps": number | null,"set_number": number,"training_day_id": string,"training_session_id": string,"updated_at": string,"weight_kg": number | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "athlete_id": string,"created_at"?: string,"day_exercise_id": string,"id"?: string,"reps"?: number | null,"set_number": number,"training_day_id": string,"training_session_id": string,"updated_at"?: string,"weight_kg"?: number | null
+                  }
+                  Update: {
+                    "athlete_id"?: string,"created_at"?: string,"day_exercise_id"?: string,"id"?: string,"reps"?: number | null,"set_number"?: number,"training_day_id"?: string,"training_session_id"?: string,"updated_at"?: string,"weight_kg"?: number | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "set_logs_athlete_id_fkey"
+      columns: ["athlete_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "set_logs_day_exercise_id_athlete_id_fkey"
+      columns: ["day_exercise_id","athlete_id"]
+isOneToOne: false
+      referencedRelation: "day_exercises"
+      referencedColumns: ["id","athlete_id"]
+    },{
+      foreignKeyName: "set_logs_day_exercise_id_training_day_id_fkey"
+      columns: ["day_exercise_id","training_day_id"]
+isOneToOne: false
+      referencedRelation: "day_exercises"
+      referencedColumns: ["id","training_day_id"]
+    },{
+      foreignKeyName: "set_logs_training_session_id_athlete_id_fkey"
+      columns: ["training_session_id","athlete_id"]
+isOneToOne: false
+      referencedRelation: "training_sessions"
+      referencedColumns: ["id","athlete_id"]
+    },{
+      foreignKeyName: "set_logs_training_session_id_training_day_id_fkey"
+      columns: ["training_session_id","training_day_id"]
+isOneToOne: false
+      referencedRelation: "training_sessions"
+      referencedColumns: ["id","training_day_id"]
+    }
+                  ]
                 },"trainer_athletes": {
                   Row: {
                     "athlete_id": string,"created_at": string,"ended_at": string | null,"id": string,"started_at": string,"trainer_id": string,"updated_at": string
@@ -557,6 +673,52 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "trainers"
       referencedColumns: ["profile_id"]
+    }
+                  ]
+                },"training_sessions": {
+                  Row: {
+                    "athlete_id": string,"completed_at": string | null,"created_at": string,"id": string,"notes": string | null,"performed_on": string,"program_week": number,"training_day_id": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "athlete_id": string,"completed_at"?: string | null,"created_at"?: string,"id"?: string,"notes"?: string | null,"performed_on": string,"program_week": number,"training_day_id": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "athlete_id"?: string,"completed_at"?: string | null,"created_at"?: string,"id"?: string,"notes"?: string | null,"performed_on"?: string,"program_week"?: number,"training_day_id"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "training_sessions_athlete_id_fkey"
+      columns: ["athlete_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "training_sessions_training_day_id_athlete_id_fkey"
+      columns: ["training_day_id","athlete_id"]
+isOneToOne: false
+      referencedRelation: "training_days"
+      referencedColumns: ["id","athlete_id"]
+    }
+                  ]
+                },"weekly_checkins": {
+                  Row: {
+                    "athlete_id": string,"can_progress": string | null,"created_at": string,"diet_adherence": string | null,"diet_missed_reason": string | null,"diet_notes": string | null,"diet_satisfaction": string | null,"energy": string | null,"id": string,"message_to_trainer": string | null,"motivation": string | null,"recovery": string | null,"satiety": number | null,"sleep_quality": string | null,"training_adherence": string | null,"training_notes": string | null,"updated_at": string,"week_starts_on": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "athlete_id": string,"can_progress"?: string | null,"created_at"?: string,"diet_adherence"?: string | null,"diet_missed_reason"?: string | null,"diet_notes"?: string | null,"diet_satisfaction"?: string | null,"energy"?: string | null,"id"?: string,"message_to_trainer"?: string | null,"motivation"?: string | null,"recovery"?: string | null,"satiety"?: number | null,"sleep_quality"?: string | null,"training_adherence"?: string | null,"training_notes"?: string | null,"updated_at"?: string,"week_starts_on": string
+                  }
+                  Update: {
+                    "athlete_id"?: string,"can_progress"?: string | null,"created_at"?: string,"diet_adherence"?: string | null,"diet_missed_reason"?: string | null,"diet_notes"?: string | null,"diet_satisfaction"?: string | null,"energy"?: string | null,"id"?: string,"message_to_trainer"?: string | null,"motivation"?: string | null,"recovery"?: string | null,"satiety"?: number | null,"sleep_quality"?: string | null,"training_adherence"?: string | null,"training_notes"?: string | null,"updated_at"?: string,"week_starts_on"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "weekly_checkins_athlete_id_fkey"
+      columns: ["athlete_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
     }
                   ]
                 }
