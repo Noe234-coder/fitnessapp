@@ -23,8 +23,10 @@ in clear or encrypted (`.gitignore` covers `*.age`, `*.sql.gz`, `*.dump`,
 - **Keep-alive:** the dump is a real database connection. The job also sends
   one request to the API (`/rest/v1/` with the publishable key); any answer
   below HTTP 500 counts.
-- **Logs:** the job prints the size of the encrypted file and the HTTP status,
-  nothing else: no connection string, no row.
+- **Logs:** the job prints that the database host is `*.pooler.supabase.com`
+  on port 5432 (it stops if `BACKUP_DB_URL` is not the session pooler), the
+  size of the encrypted file and the HTTP status, nothing else: no user, no
+  password, no host name, no row.
 
 ## Where the settings live
 

@@ -58,6 +58,31 @@ jobs:
             echo "::error::Environment variable BACKUP_AGE_RECIPIENT is not set."
             exit 1
           fi
+          # GitHub's runners have no IPv6, and the free plan's direct
+          # connection is IPv6-only: the URL must be the session pooler
+          # (*.pooler.supabase.com, port 5432). Only a fixed suffix and the
+          # port are printed, never the user, the password or the host.
+          rest="${BACKUP_DB_URL#*://}"
+          host_port="${rest##*@}"
+          host_port="${host_port%%/*}"
+          host_port="${host_port%%\?*}"
+          host="${host_port%:*}"
+          port="${host_port##*:}"
+          if [ "$host" = "$host_port" ]; then
+            port="(none)"
+          fi
+          case "$host" in
+            *.pooler.supabase.com) echo "Database host: *.pooler.supabase.com" ;;
+            *)
+              echo "::error::BACKUP_DB_URL is not a Supabase pooler host (*.pooler.supabase.com)."
+              exit 1
+              ;;
+          esac
+          if [ "$port" != "5432" ]; then
+            echo "::error::BACKUP_DB_URL must use port 5432 (session pooler), not $port."
+            exit 1
+          fi
+          echo "Database port: 5432 (session pooler)"
 
       # The script pipes pg_dump into gzip and age: no clear dump is written
       # to the runner's disk. It prints the size of the encrypted file only.
